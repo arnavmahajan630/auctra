@@ -26,9 +26,14 @@ export default function Sidebar() {
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Explore Auctions', href: '/explore', icon: Compass },
     { name: 'Global Leaderboard', href: '/leaderboard', icon: Trophy },
-    { name: 'Collectibles & Rewards', href: '/dashboard', icon: Gem },
+    { name: 'Collectibles & Rewards', href: '/profile', icon: Gem },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
+
+  // Extend nav for sellers
+  if (isSeller) {
+    navItems.splice(1, 0, { name: 'Seller Dashboard', href: '/seller/dashboard', icon: ShieldCheck });
+  }
 
   return (
     <aside className="fixed inset-y-0 left-0 z-20 flex w-72 flex-col justify-between border-r border-slate-800/40 bg-[#060A13] px-6 py-8 text-white select-none">
@@ -60,11 +65,10 @@ export default function Sidebar() {
 
       {/* Nav Menu Items */}
       <nav className="flex flex-col gap-2 mt-8 flex-1 relative">
-        {navItems.map((item, idx) => {
-          const isCollectibles = item.name === 'Collectibles & Rewards';
-          const isActive = isCollectibles
+  {navItems.map((item, idx) => {
+          const isActive = item.href === '/dashboard'
             ? pathname === '/dashboard' || pathname === '/'
-            : pathname.startsWith(item.href) && item.href !== '/dashboard';
+            : pathname.startsWith(item.href);
 
           return (
             <Link

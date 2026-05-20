@@ -97,15 +97,15 @@ export default function AuctionCard({ auction }: { auction: Auction }) {
             </span>
           </div>
 
-          <Link href={`/explore/${auction.id}`} passHref legacyBehavior>
-            <motion.a
+          <Link href={`/explore/${auction.id}`}>
+            <motion.span
               whileHover={{ scale: 1.03 }}
               whileTap={{ scale: 0.97 }}
               className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2.5 font-semibold text-xs text-white hover:from-indigo-500 hover:to-violet-500 shadow-[0_4px_15px_rgba(79,70,229,0.3)] transition-all cursor-pointer"
             >
               Bid Now
               <ArrowUpRight className="h-3.5 w-3.5" />
-            </motion.a>
+            </motion.span>
           </Link>
         </div>
       </div>

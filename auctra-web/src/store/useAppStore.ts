@@ -13,6 +13,20 @@ interface AppState {
   isSeller: boolean;
   sellerBio: string;
   sellerInitialized: boolean;
+  sellerProfile?: {
+    fullName?: string;
+    email?: string;
+    phone?: string;
+    country?: string;
+    walletAddress?: string;
+    govId?: string; // mock filename
+    selfie?: string; // mock filename
+    verified?: boolean;
+  };
+
+  // Listings & Seller auctions
+  sellerListings: Auction[];
+  wonAuctions: Collectible[]; // won but not claimed yet
 
   // Auctions State
   auctions: Auction[];
@@ -23,8 +37,17 @@ interface AppState {
   connectWallet: () => void;
   disconnectWallet: () => void;
   initializeSeller: (bio: string) => void;
+  registerSellerProfile: (profile: Partial<AppState['sellerProfile']>) => Promise<{ success: boolean }>;
   placeBid: (auctionId: string, amount: number) => { success: boolean; error?: string };
   claimAuction: (auctionId: string) => void;
+  createListing: (listing: Auction) => Promise<{ success: boolean }>;
+  claimReward: (collectibleId: string) => Promise<{ success: boolean }>;
+  // Auth modal UI
+  authModalOpen: boolean;
+  authModalMessage: string | null;
+  pendingAuthRedirect: string | null;
+  openAuthModal: (message?: string, redirect?: string) => void;
+  closeAuthModal: () => void;
 }
 
 const INITIAL_AUCTIONS: Auction[] = [
@@ -139,6 +162,18 @@ const INITIAL_COLLECTIBLES: Collectible[] = [
   }
 ];
 
+const INITIAL_WON: Collectible[] = [
+  {
+    id: 'pending-won-01',
+    title: 'Celestial Relic (Pending Claim)',
+    image: '/images/aetherial_shard.png',
+    wonPrice: 0.95,
+    xpReward: 200,
+    mintedDate: new Date().toISOString(),
+    txHash: ''
+  }
+];
+
 const INITIAL_LEADERBOARD: LeaderboardEntry[] = [
   {
     rank: 1,
@@ -199,11 +234,28 @@ export const useAppStore = create<AppState>((set, get) => ({
   isSeller: false,
   sellerBio: '',
   sellerInitialized: false,
+  sellerProfile: undefined,
+
+  // Seller listings
+  sellerListings: [],
+  wonAuctions: INITIAL_WON,
 
   // Lists
   auctions: INITIAL_AUCTIONS,
   collectibles: [],
   leaderboard: INITIAL_LEADERBOARD,
+
+  // UI / Auth modal
+  authModalOpen: false,
+  authModalMessage: null,
+  pendingAuthRedirect: null,
+  openAuthModal: (message?: string, redirect?: string) => {
+    set({ authModalOpen: true, authModalMessage: message || null, pendingAuthRedirect: redirect || null });
+  },
+  closeAuthModal: () => {
+    set({ authModalOpen: false, authModalMessage: null, pendingAuthRedirect: null });
+  },
+
 
   // Actions
   connectWallet: () => {
@@ -232,8 +284,19 @@ export const useAppStore = create<AppState>((set, get) => ({
     set({
       isSeller: true,
       sellerBio: bio,
-      sellerInitialized: true
+      sellerInitialized: true,
+      sellerProfile: {
+        verified: true
+      }
     });
+  },
+
+  registerSellerProfile: async (profile: Partial<AppState['sellerProfile']>) => {
+    // Simulate verification delay and success
+    set({ sellerProfile: { ...(get().sellerProfile || {}), ...profile, verified: false } });
+    await new Promise((r) => setTimeout(r, 2200));
+    set({ sellerProfile: { ...(get().sellerProfile || {}), ...profile, verified: true }, isSeller: true, sellerInitialized: true });
+    return { success: true };
   },
 
   placeBid: (auctionId: string, amount: number) => {
@@ -285,5 +348,25 @@ export const useAppStore = create<AppState>((set, get) => ({
       artifactsCount: artifactsCount + 1,
       auctions: auctions.filter(a => a.id !== auctionId)
     });
+  },
+
+  createListing: async (listing: Auction) => {
+    // append to sellerListings and global auctions to appear in Explore
+    const { auctions, sellerListings } = get();
+    const newListing = { ...listing, status: 'active' } as Auction;
+    set({ sellerListings: [newListing, ...sellerListings], auctions: [newListing, ...auctions] });
+    // simulate async mint/list steps
+    await new Promise((r) => setTimeout(r, 1400));
+    return { success: true };
+  },
+
+  claimReward: async (collectibleId: string) => {
+    const { wonAuctions, collectibles } = get();
+    const item = wonAuctions.find((c) => c.id === collectibleId);
+    if (!item) return { success: false };
+    // simulate payment/mint flow
+    await new Promise((r) => setTimeout(r, 1600));
+    set({ collectibles: [item, ...collectibles], wonAuctions: wonAuctions.filter((c) => c.id !== collectibleId) });
+    return { success: true };
   }
 }));

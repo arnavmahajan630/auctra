@@ -1,8 +1,11 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useAppStore } from '../../store/useAppStore';
 import { Gem, Zap, Plus, ArrowUpRight } from 'lucide-react';
 import LayoutWrapper from '../../components/LayoutWrapper';
+import AuthGuard from '../../components/AuthGuard';
+import useRequireAuth from '../../hooks/useRequireAuth';
 import EmptyTrophyCase from '../../components/EmptyTrophyCase';
 import CollectibleCard from '../../components/CollectibleCard';
 import StatBadge from '../../components/StatBadge';
@@ -19,10 +22,9 @@ export default function DashboardPage() {
 
   return (
     <LayoutWrapper>
-      {!isConnected ? (
-        <EmptyTrophyCase />
-      ) : (
-        <div className="flex flex-col gap-8 animate-fade-in">
+      <div>
+        {useRequireAuth() && (
+          <div className="flex flex-col gap-8 animate-fade-in">
           {/* Header & Badges */}
           <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
             <div className="flex flex-col">
@@ -80,7 +82,7 @@ export default function DashboardPage() {
                 </div>
 
                 <button
-                  onClick={() => router.push('/explore')}
+                  onClick={() => useAppStore.getState().openAuthModal('Sign in to continue', '/explore')}
                   className="inline-flex items-center gap-1.5 rounded-xl border border-slate-800 bg-white/5 px-5 py-2.5 font-semibold text-xs text-slate-300 hover:bg-white/10 hover:border-slate-700 transition-all cursor-pointer"
                 >
                   View Live Auctions
@@ -89,8 +91,9 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
-        </div>
-      )}
+          </div>
+        )}
+      </div>
     </LayoutWrapper>
   );
 }

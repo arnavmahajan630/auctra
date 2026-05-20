@@ -4,14 +4,17 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { User, Wallet, Gem, Zap, AlertCircle, ArrowUpRight } from 'lucide-react';
 import LayoutWrapper from '../../components/LayoutWrapper';
+import { useAppStore } from '../../store/useAppStore';
 import CollectibleCard from '../../components/CollectibleCard';
 import { useAuth } from '../../hooks/useAuth';
 import { useCollectibles } from '../../hooks/useCollectibles';
 import { useAuctions } from '../../hooks/useAuctions';
+import useRequireAuth from '../../hooks/useRequireAuth';
 
-type TabType = 'collectibles' | 'active-bids' | 'transactions';
+type TabType = 'collectibles' | 'active-bids' | 'transactions' | 'claim-rewards';
 
 export default function ProfilePage() {
+  useRequireAuth();
   const { isConnected, walletAddress, connectWallet } = useAuth();
   const { collectibles, reputationXP, multiplier, artifactsCount } = useCollectibles();
   const { auctions } = useAuctions();
@@ -30,7 +33,12 @@ export default function ProfilePage() {
     { id: 'collectibles', label: 'Claimed Collectibles' },
     { id: 'active-bids', label: 'Active Live Bids' },
     { id: 'transactions', label: 'On-Chain Activity' },
+    { id: 'claim-rewards', label: 'Claim Rewards' }
   ];
+
+  const wonAuctions = useAppStore((s) => s.wonAuctions);
+  const claimReward = useAppStore((s) => s.claimReward);
+  const [processingClaim, setProcessingClaim] = useState<string | null>(null);
 
   return (
     <LayoutWrapper>
@@ -45,7 +53,7 @@ export default function ProfilePage() {
             Connect your Web3 wallet to access your collector dashboard and on-chain assets.
           </p>
           <button
-            onClick={connectWallet}
+            onClick={() => useAppStore.getState().openAuthModal('Sign in to continue', '/profile')}
             className="flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-8 py-3.5 font-bold text-sm text-white hover:from-indigo-500 hover:to-violet-500 active:scale-95 shadow-[0_4px_20px_rgba(79,70,229,0.3)] transition-all cursor-pointer"
           >
             <Wallet className="h-4 w-4" />
@@ -142,6 +150,48 @@ export default function ProfilePage() {
               ) : (
                 collectibles.map((item) => (
                   <CollectibleCard key={item.id} collectible={item} variant="standard" />
+                ))
+              )}
+            </div>
+          )}
+
+          {activeTab === 'claim-rewards' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {wonAuctions.length === 0 ? (
+                <div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
+                  <AlertCircle className="h-8 w-8 text-slate-600 mb-3" />
+                  <p className="text-slate-500 text-sm">No rewards available to claim.</p>
+                </div>
+              ) : (
+                wonAuctions.map((item) => (
+                  <div key={item.id} className="flex flex-col justify-between p-6 rounded-3xl border border-indigo-500/25 bg-slate-900/50">
+                    <div className="flex items-center gap-4 mb-4">
+                      <img src={item.image} alt={item.title} className="h-16 w-16 rounded-2xl object-cover border border-slate-900 flex-shrink-0" />
+                      <div className="flex flex-col min-w-0">
+                        <h4 className="text-sm font-bold text-white truncate">{item.title}</h4>
+                        <span className="text-[10px] text-slate-500 mt-1">Won for {item.wonPrice} ETH</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between border-t border-slate-800/20 pt-4 text-xs">
+                      <div className="flex flex-col">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase">Status</span>
+                        <span className="text-base font-extrabold text-white mt-0.5">Unclaimed</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={async () => {
+                            setProcessingClaim(item.id);
+                            await claimReward(item.id);
+                            setProcessingClaim(null);
+                          }}
+                          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-xs font-bold text-white"
+                        >
+                          {processingClaim === item.id ? 'Processing...' : 'Pay & Claim'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 ))
               )}
             </div>

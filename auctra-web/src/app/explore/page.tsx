@@ -1,6 +1,7 @@
-'use client';
+"use client";
 
 import { useState } from 'react';
+import useRequireAuth from '../../hooks/useRequireAuth';
 import LayoutWrapper from '../../components/LayoutWrapper';
 import AuctionCard from '../../components/AuctionCard';
 import { useAuctions } from '../../hooks/useAuctions';
@@ -8,6 +9,7 @@ import { useAuctions } from '../../hooks/useAuctions';
 type FilterType = 'all' | 'active' | 'upcoming' | 'high-value';
 
 export default function ExplorePage() {
+  useRequireAuth();
   const { auctions } = useAuctions();
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
 
