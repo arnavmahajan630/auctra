@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Auction, Collectible, LeaderboardEntry } from '../types';
+import { supabase } from '../server/supabase';
 
 interface AppState {
   // Authentication / Wallet
@@ -8,6 +9,16 @@ interface AppState {
   reputationXP: number;
   multiplier: number;
   artifactsCount: number;
+  
+  // Profile specific state fields
+  profileId: string | null;
+  profileName: string | null;
+  profileAvatar: string | null;
+  profileBio: string | null;
+  profileLevel: number;
+  profileRankTitle: string;
+  profileActiveBids: any[];
+  profileActivityLogs: any[];
   
   // Seller State
   isSeller: boolean;
@@ -25,6 +36,9 @@ interface AppState {
   initializeSeller: (bio: string) => void;
   placeBid: (auctionId: string, amount: number) => { success: boolean; error?: string };
   claimAuction: (auctionId: string) => void;
+  fetchLeaderboard: () => Promise<void>;
+  fetchProfileData: (profileId: string) => Promise<void>;
+  simulateProfileSwitch: (profileId: string) => Promise<void>;
 }
 
 const INITIAL_AUCTIONS: Auction[] = [
@@ -195,6 +209,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   multiplier: 1.0,
   artifactsCount: 0,
 
+  // Profile specific state fields
+  profileId: null,
+  profileName: null,
+  profileAvatar: null,
+  profileBio: null,
+  profileLevel: 1,
+  profileRankTitle: 'Rookie',
+  profileActiveBids: [],
+  profileActivityLogs: [],
+
   // Seller State
   isSeller: false,
   sellerBio: '',
@@ -209,12 +233,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   connectWallet: () => {
     set({
       isConnected: true,
-      walletAddress: '0x8F3a2C...4D1A',
-      reputationXP: 2320,
-      multiplier: 1.15,
-      artifactsCount: 12,
-      collectibles: INITIAL_COLLECTIBLES
+      walletAddress: '0x7C2a69Df...D44E',
     });
+    // Dynamically fetch seeded AetherLord's database details to represent the active user profile
+    get().fetchProfileData('11111111-1111-1111-1111-111111111111');
   },
 
   disconnectWallet: () => {
@@ -224,7 +246,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       reputationXP: 0,
       multiplier: 1.0,
       artifactsCount: 0,
-      collectibles: []
+      collectibles: [],
+      profileId: null,
+      profileName: null,
+      profileAvatar: null,
+      profileBio: null,
+      profileLevel: 1,
+      profileRankTitle: 'Rookie',
+      profileActiveBids: [],
+      profileActivityLogs: []
     });
   },
 
@@ -285,5 +315,156 @@ export const useAppStore = create<AppState>((set, get) => ({
       artifactsCount: artifactsCount + 1,
       auctions: auctions.filter(a => a.id !== auctionId)
     });
+  },
+
+  fetchLeaderboard: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('view_leaderboard')
+        .select('*')
+        .order('rank', { ascending: true });
+
+      if (error) throw error;
+      if (data) {
+        set({ leaderboard: data as LeaderboardEntry[] });
+      }
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
+      throw error;
+    }
+  },
+
+  fetchProfileData: async (profileId: string) => {
+    try {
+      // 1. Fetch profile details
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', profileId)
+        .single();
+
+      if (profileError) throw profileError;
+      if (!profile) throw new Error('Profile not found');
+
+      // 2. Fetch primary wallet
+      const { data: walletData } = await supabase
+        .from('user_wallets')
+        .select('wallet_address')
+        .eq('user_id', profileId)
+        .eq('is_primary', true)
+        .single();
+
+      const walletAddress = walletData?.wallet_address || '0xUnknown...';
+
+      // 3. Fetch collectibles
+      const { data: collectibles, error: collError } = await supabase
+        .from('view_collectibles')
+        .select('*')
+        .eq('owner_id', profileId);
+
+      if (collError) throw collError;
+
+      // 4. Fetch bids for active bids tab
+      const { data: bidsData, error: bidsError } = await supabase
+        .from('bids')
+        .select('*, auction:auctions(*)')
+        .eq('bidder_id', profileId);
+
+      if (bidsError) throw bidsError;
+
+      // Filter active bids: group by auction_id, keep the highest bid, only where auction is active
+      const activeBidsMap: Record<string, any> = {};
+      if (bidsData) {
+        bidsData.forEach((bid) => {
+          const auction = bid.auction;
+          if (auction && auction.auction_status === 'active') {
+            const existingBid = activeBidsMap[auction.id];
+            if (!existingBid || Number(bid.bid_amount) > Number(existingBid.currentBid)) {
+              activeBidsMap[auction.id] = {
+                id: auction.id,
+                title: auction.title,
+                image: auction.image_url,
+                currentBid: Number(bid.bid_amount),
+                creator: 'Oktra Creator',
+                xpReward: auction.xp_reward,
+                endsAt: auction.ends_at,
+                highestBidder: walletAddress
+              };
+            }
+          }
+        });
+      }
+      const activeBids = Object.values(activeBidsMap);
+
+      // 5. Fetch claims for transaction feed
+      const { data: claimsData, error: claimsError } = await supabase
+        .from('claims')
+        .select('*, auction:auctions(title)')
+        .eq('winner_user_id', profileId);
+
+      if (claimsError) throw claimsError;
+
+      // Merge bids and claims into activity feed sorted by date descending
+      const activityLogs: any[] = [];
+      if (bidsData) {
+        bidsData.forEach((bid) => {
+          activityLogs.push({
+            type: 'Bid Submitted',
+            item: bid.auction?.title || 'Unknown Asset',
+            amount: `${Number(bid.bid_amount).toFixed(2)} ETH`,
+            status: bid.is_winning_bid ? 'Winning' : 'Confirmed',
+            txHash: bid.tx_hash ? `${bid.tx_hash.substring(0, 8)}...${bid.tx_hash.substring(bid.tx_hash.length - 4)}` : '0xUnknown',
+            date: new Date(bid.created_at).toLocaleDateString() + ' ' + new Date(bid.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            rawDate: new Date(bid.created_at)
+          });
+        });
+      }
+      if (claimsData) {
+        claimsData.forEach((claim) => {
+          activityLogs.push({
+            type: 'Artifact Won & Claimed',
+            item: claim.auction?.title || 'Unknown Asset',
+            amount: `${Number(claim.amount_paid).toFixed(2)} ETH`,
+            status: 'Minted',
+            txHash: claim.payment_tx_hash ? `${claim.payment_tx_hash.substring(0, 8)}...${claim.payment_tx_hash.substring(claim.payment_tx_hash.length - 4)}` : '0xUnknown',
+            date: new Date(claim.claimed_at || claim.created_at).toLocaleDateString() + ' ' + new Date(claim.claimed_at || claim.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            rawDate: new Date(claim.claimed_at || claim.created_at)
+          });
+        });
+      }
+      activityLogs.sort((a, b) => b.rawDate.getTime() - a.rawDate.getTime());
+
+      // Update state
+      set({
+        profileId,
+        walletAddress,
+        profileName: profile.display_name || profile.username,
+        profileAvatar: profile.avatar_url,
+        profileBio: profile.bio || 'Digital collector of elite on-chain artifacts.',
+        reputationXP: profile.xp,
+        multiplier: Number(profile.multiplier),
+        artifactsCount: profile.total_auctions_won,
+        profileLevel: profile.level,
+        profileRankTitle: profile.rank_title,
+        collectibles: (collectibles || []).map(c => ({
+          id: c.id,
+          title: c.title,
+          image: c.image,
+          wonPrice: Number(c.wonPrice),
+          xpReward: c.xpReward,
+          mintedDate: c.mintedDate,
+          txHash: c.txHash
+        })),
+        profileActiveBids: activeBids,
+        profileActivityLogs: activityLogs
+      });
+    } catch (error) {
+      console.error('Error fetching profile data:', error);
+      throw error;
+    }
+  },
+
+  simulateProfileSwitch: async (profileId: string) => {
+    await get().fetchProfileData(profileId);
   }
 }));
