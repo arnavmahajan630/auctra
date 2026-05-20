@@ -18,7 +18,9 @@ contract MetaTxTest is BaseTest {
         assertTrue(ok, "forwarded claim should succeed");
 
         assertEq(badge.ownerOf(1), winner);
-        assertEq(usd.balanceOf(seller), PRICE);
+        uint256 fee = (PRICE * FEE_BPS) / 10_000;
+        assertEq(usd.balanceOf(seller), PRICE - fee);
+        assertEq(usd.balanceOf(settlement.TREASURY()), fee);
     }
 
     function test_NonForwarderRelayDoesNotSpoofSender() public {

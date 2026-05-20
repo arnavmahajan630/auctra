@@ -14,8 +14,10 @@ contract AuctionSettlementTest is BaseTest {
         vm.prank(winner);
         settlement.claim(AUCTION_ID, PRICE, sig);
 
-        assertEq(usd.balanceOf(seller), sellerBefore + PRICE, "seller paid");
-        assertEq(usd.balanceOf(winner), winnerBefore - PRICE, "winner debited");
+        uint256 fee = (PRICE * FEE_BPS) / 10_000;
+        assertEq(usd.balanceOf(seller), sellerBefore + PRICE - fee, "seller paid net of fee");
+        assertEq(usd.balanceOf(settlement.TREASURY()), fee, "treasury paid fee");
+        assertEq(usd.balanceOf(winner), winnerBefore - PRICE, "winner debited gross");
         assertEq(badge.ownerOf(1), winner, "badge minted to winner");
         (,,, bool settled,,) = settlement.auctions(AUCTION_ID);
         assertTrue(settled);

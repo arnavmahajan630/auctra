@@ -21,10 +21,17 @@ contract AuctionSettlement is ERC2771Context, Ownable {
 
     uint64 public constant CLAIM_WINDOW = 24 hours;
 
+    /// @notice Hardcoded platform treasury (hackathon scope on Base testnet).
+    ///         Swap for a multisig/Safe before mainnet.
+    address public constant TREASURY = 0x000000000000000000000000000000000000Fee5;
+
+    uint16 public constant MAX_FEE_BPS = 1000; // 10%
+
     IERC20 public immutable mockUSD;
     AchievementBadge public immutable badge;
 
     address public backendSigner;
+    uint16 public feeBps;
 
     struct AuctionConfig {
         address seller;
@@ -45,28 +52,44 @@ contract AuctionSettlement is ERC2771Context, Ownable {
     error WindowNotExpired();
     error BadSignature();
     error ZeroAddress();
+    error FeeTooHigh();
 
     event BackendSignerUpdated(address indexed signer);
     event AuctionConfigured(uint256 indexed auctionId, address indexed seller, uint64 endTime, uint64 claimDeadline);
     event Claimed(uint256 indexed auctionId, address indexed winner, uint256 finalPrice, uint256 badgeId);
     event ClaimedAsRunnerUp(uint256 indexed auctionId, address indexed runnerUp, uint256 finalPrice, uint256 badgeId);
     event AuctionCancelled(uint256 indexed auctionId);
+    event FeeBpsUpdated(uint16 bps);
+    event FeeCollected(uint256 indexed auctionId, address indexed treasury, uint256 fee);
 
-    constructor(address owner_, address trustedForwarder, IERC20 mockUSD_, AchievementBadge badge_, address signer_)
-        ERC2771Context(trustedForwarder)
-        Ownable(owner_)
-    {
+    constructor(
+        address owner_,
+        address trustedForwarder,
+        IERC20 mockUSD_,
+        AchievementBadge badge_,
+        address signer_,
+        uint16 feeBps_
+    ) ERC2771Context(trustedForwarder) Ownable(owner_) {
         if (signer_ == address(0)) revert ZeroAddress();
+        if (feeBps_ > MAX_FEE_BPS) revert FeeTooHigh();
         mockUSD = mockUSD_;
         badge = badge_;
         backendSigner = signer_;
+        feeBps = feeBps_;
         emit BackendSignerUpdated(signer_);
+        emit FeeBpsUpdated(feeBps_);
     }
 
     function setBackendSigner(address signer_) external onlyOwner {
         if (signer_ == address(0)) revert ZeroAddress();
         backendSigner = signer_;
         emit BackendSignerUpdated(signer_);
+    }
+
+    function setFeeBps(uint16 bps) external onlyOwner {
+        if (bps > MAX_FEE_BPS) revert FeeTooHigh();
+        feeBps = bps;
+        emit FeeBpsUpdated(bps);
     }
 
     /// @notice Register an auction's seller + end time. Called by backend admin after listing approval.
@@ -76,12 +99,7 @@ contract AuctionSettlement is ERC2771Context, Ownable {
         if (seller == address(0)) revert ZeroAddress();
         uint64 deadline = endTime + CLAIM_WINDOW;
         auctions[auctionId] = AuctionConfig({
-            seller: seller,
-            endTime: endTime,
-            claimDeadline: deadline,
-            settled: false,
-            cancelled: false,
-            exists: true
+            seller: seller, endTime: endTime, claimDeadline: deadline, settled: false, cancelled: false, exists: true
         });
         emit AuctionConfigured(auctionId, seller, endTime, deadline);
     }
@@ -106,7 +124,7 @@ contract AuctionSettlement is ERC2771Context, Ownable {
         _verify(WINNER_TAG, auctionId, claimant, finalPrice, signature);
 
         a.settled = true;
-        mockUSD.safeTransferFrom(claimant, a.seller, finalPrice);
+        _settle(auctionId, claimant, a.seller, finalPrice);
         uint256 badgeId = badge.mint(claimant, auctionId, finalPrice);
 
         emit Claimed(auctionId, claimant, finalPrice, badgeId);
@@ -124,7 +142,7 @@ contract AuctionSettlement is ERC2771Context, Ownable {
         _verify(RUNNER_UP_TAG, auctionId, claimant, finalPrice, signature);
 
         a.settled = true;
-        mockUSD.safeTransferFrom(claimant, a.seller, finalPrice);
+        _settle(auctionId, claimant, a.seller, finalPrice);
         uint256 badgeId = badge.mint(claimant, auctionId, finalPrice);
 
         emit ClaimedAsRunnerUp(auctionId, claimant, finalPrice, badgeId);
@@ -137,6 +155,20 @@ contract AuctionSettlement is ERC2771Context, Ownable {
     {
         bytes32 inner = keccak256(abi.encode(tag, block.chainid, address(this), auctionId, claimant, finalPrice));
         return MessageHashUtils.toEthSignedMessageHash(inner);
+    }
+
+    /// @dev Splits `finalPrice` into seller payout and platform fee. Both pulled directly from claimant.
+    function _settle(uint256 auctionId, address claimant, address seller_, uint256 finalPrice)
+        internal
+        returns (uint256 fee)
+    {
+        fee = (finalPrice * feeBps) / 10_000;
+        uint256 sellerCut = finalPrice - fee;
+        mockUSD.safeTransferFrom(claimant, seller_, sellerCut);
+        if (fee > 0) {
+            mockUSD.safeTransferFrom(claimant, TREASURY, fee);
+            emit FeeCollected(auctionId, TREASURY, fee);
+        }
     }
 
     function _verify(bytes32 tag, uint256 auctionId, address claimant, uint256 finalPrice, bytes calldata signature)

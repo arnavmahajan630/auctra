@@ -22,8 +22,8 @@ contract Deploy is Script {
 
         MockUSD usd = new MockUSD();
         AchievementBadge badge = new AchievementBadge(deployer);
-        AuctionSettlement settlement =
-            new AuctionSettlement(deployer, forwarder, usd, badge, signer);
+        uint16 feeBps = uint16(vm.envOr("FEE_BPS", uint256(200))); // default 2%
+        AuctionSettlement settlement = new AuctionSettlement(deployer, forwarder, usd, badge, signer, feeBps);
         badge.setMinter(address(settlement));
 
         vm.stopBroadcast();
@@ -33,5 +33,7 @@ contract Deploy is Script {
         console2.log("AuctionSettlement: ", address(settlement));
         console2.log("Backend signer:    ", signer);
         console2.log("Trusted forwarder: ", forwarder);
+        console2.log("Fee bps:           ", feeBps);
+        console2.log("Treasury:          ", settlement.TREASURY());
     }
 }

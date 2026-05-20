@@ -28,6 +28,7 @@ abstract contract BaseTest is Test {
     uint64 internal endTime;
     uint256 internal constant PRICE = 1_000 * 1e6;
     uint256 internal constant RUNNER_PRICE = 800 * 1e6;
+    uint16 internal constant FEE_BPS = 200; // 2%
 
     function setUp() public virtual {
         (winner, winnerPk) = makeAddrAndKey("winner");
@@ -39,7 +40,7 @@ abstract contract BaseTest is Test {
         vm.startPrank(owner);
         usd = new MockUSD();
         badge = new AchievementBadge(owner);
-        settlement = new AuctionSettlement(owner, trustedForwarder, usd, badge, signer);
+        settlement = new AuctionSettlement(owner, trustedForwarder, usd, badge, signer, FEE_BPS);
         badge.setMinter(address(settlement));
         settlement.configureAuction(AUCTION_ID, seller, endTime);
         vm.stopPrank();

@@ -16,7 +16,9 @@ contract RunnerUpTest is BaseTest {
         vm.prank(runnerUp);
         settlement.claimAsRunnerUp(AUCTION_ID, RUNNER_PRICE, sig);
 
-        assertEq(usd.balanceOf(seller), sellerBefore + RUNNER_PRICE);
+        uint256 fee = (RUNNER_PRICE * FEE_BPS) / 10_000;
+        assertEq(usd.balanceOf(seller), sellerBefore + RUNNER_PRICE - fee, "seller paid net");
+        assertEq(usd.balanceOf(settlement.TREASURY()), fee, "treasury paid fee");
         assertEq(badge.ownerOf(1), runnerUp);
     }
 
