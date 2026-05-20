@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Auctra",
-  description: "Auctra - Coming Soon",
+  title: "Oktra — Premium Web3 Auctions",
+  description: "Oktra - Elite on-chain auctions for premium digital and physical assets.",
 };
 
 export default function RootLayout({
@@ -25,9 +25,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased scroll-smooth`}
+      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="h-full bg-white dark:bg-black text-black dark:text-white">
+      <body className="h-full bg-[#060911] text-white">
         {children}
       </body>
     </html>
