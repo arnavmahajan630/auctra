@@ -60,4 +60,14 @@
     );
     animation: shimmer 2s infinite;
   }
+
+  @keyframes successPulse {
+    0% { box-shadow: 0 0 0 0 rgba(72,187,120,0.28); }
+    70% { box-shadow: 0 0 0 14px rgba(72,187,120,0); }
+    100% { box-shadow: 0 0 0 0 rgba(72,187,120,0); }
+  }
+
+  .success-pulse {
+    animation: successPulse 1.2s ease-out;
+  }
 }

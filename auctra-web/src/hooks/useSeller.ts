@@ -11,6 +11,7 @@ export function useSeller() {
   const sellerBio = useAppStore((state) => state.sellerBio);
   const sellerInitialized = useAppStore((state) => state.sellerInitialized);
   const initializeSellerAction = useAppStore((state) => state.initializeSeller);
+  const registerSellerProfileAction = useAppStore((state) => state.registerSellerProfile);
 
   const initializeSeller = async (bio: string) => {
     // TODO: Connect with contract registration or backend api.
@@ -20,10 +21,16 @@ export function useSeller() {
     return { success: true };
   };
 
+  const registerSellerProfile = async (profile: any) => {
+    // proxy to store action
+    return registerSellerProfileAction(profile as any);
+  };
+
   return {
     isSeller,
     sellerBio,
     sellerInitialized,
-    initializeSeller
+  initializeSeller,
+  registerSellerProfile
   };
 }

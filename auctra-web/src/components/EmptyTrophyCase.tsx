@@ -2,9 +2,11 @@
 
 import { Gem, ArrowRight } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useAppStore } from '../store/useAppStore';
 
 export default function EmptyTrophyCase() {
   const router = useRouter();
+  const openAuth = useAppStore((s) => s.openAuthModal);
 
   return (
     <div className="flex flex-col items-center justify-center py-12">
@@ -28,7 +30,7 @@ export default function EmptyTrophyCase() {
 
         {/* Action Button */}
         <button
-          onClick={() => router.push('/explore')}
+          onClick={() => openAuth('Sign in to continue', '/explore')}
           className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-8 py-4 font-semibold text-sm text-white hover:from-indigo-500 hover:to-violet-500 active:scale-95 shadow-[0_4px_25px_rgba(79,70,229,0.4)] transition-all duration-200 cursor-pointer"
         >
           Explore Live Auctions

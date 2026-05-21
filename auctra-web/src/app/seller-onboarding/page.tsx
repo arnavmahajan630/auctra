@@ -6,28 +6,45 @@ import Link from 'next/link';
 import { Shield, Globe, Award, Sparkles, CheckCircle2, ChevronRight } from 'lucide-react';
 import { useSeller } from '../../hooks/useSeller';
 import { useAuth } from '../../hooks/useAuth';
+import useRequireAuth from '../../hooks/useRequireAuth';
+import { useAppStore } from '../../store/useAppStore';
 
 export default function SellerOnboardingPage() {
   const router = useRouter();
-  const { isConnected, connectWallet } = useAuth();
-  const { initializeSeller } = useSeller();
+  const { isConnected } = useAuth();
+  useRequireAuth();
+  const openAuth = useAppStore((s) => s.openAuthModal);
+  const { initializeSeller, registerSellerProfile } = useSeller();
 
-  const [step, setStep] = useState<'info' | 'form' | 'loading' | 'success'>('info');
+  const [step, setStep] = useState<'info' | 'form' | 'verify' | 'loading' | 'success'>('info');
   const [bio, setBio] = useState('');
   const [companyName, setCompanyName] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
+  const [country, setCountry] = useState('');
+  const [govIdFile, setGovIdFile] = useState<string | null>(null);
+  const [selfieFile, setSelfieFile] = useState<string | null>(null);
 
   const handleStartOnboarding = () => {
-    if (!isConnected) { connectWallet(); return; }
+    if (!isConnected) { openAuth('Sign in to continue', '/seller-onboarding'); return; }
     setStep('form');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStep('loading');
+    // Start verification animation
+    setStep('verify');
     setTimeout(async () => {
-      await initializeSeller(bio);
-      setStep('success');
-    }, 2000);
+      setStep('loading');
+      // register seller profile (simulated KYC)
+      if (registerSellerProfile) {
+        await registerSellerProfile({ fullName, email, phone, country, walletAddress: '0x8F3a2C...4D1A', govId: govIdFile || '', selfie: selfieFile || '' });
+      } else {
+        await initializeSeller(bio);
+      }
+      setTimeout(() => setStep('success'), 1200);
+    }, 1800);
   };
 
   return (
@@ -102,28 +119,47 @@ export default function SellerOnboardingPage() {
             </div>
 
             <div className="flex flex-col gap-5">
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Seller Brand Name</label>
-                <input
-                  type="text"
-                  placeholder="e.g. Aegis Forge"
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-800 bg-slate-950/60 px-5 py-3.5 text-sm text-white placeholder-slate-600 outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/40"
-                  required
-                />
+              <div className="grid grid-cols-1 gap-4">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Full Name</label>
+                <input type="text" value={fullName} onChange={(e) => setFullName(e.target.value)} className="w-full rounded-2xl border border-slate-800 bg-slate-950/60 px-5 py-3.5 text-sm text-white" required />
               </div>
 
-              <div className="flex flex-col gap-2">
-                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Brand Mission & Bio</label>
-                <textarea
-                  placeholder="Tell collectors about the high-value assets you curate..."
-                  value={bio}
-                  onChange={(e) => setBio(e.target.value)}
-                  rows={4}
-                  className="w-full rounded-2xl border border-slate-800 bg-slate-950/60 px-5 py-3.5 text-sm text-white placeholder-slate-600 outline-none focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/40 resize-none"
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Email</label>
+                  <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-2xl border border-slate-800 bg-slate-950/60 px-5 py-3.5 text-sm text-white" required />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Phone</label>
+                  <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full rounded-2xl border border-slate-800 bg-slate-950/60 px-5 py-3.5 text-sm text-white" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Country</label>
+                  <input type="text" value={country} onChange={(e) => setCountry(e.target.value)} className="w-full rounded-2xl border border-slate-800 bg-slate-950/60 px-5 py-3.5 text-sm text-white" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Wallet Address</label>
+                  <input type="text" value={'0x8F3a2C...4D1A'} readOnly className="w-full rounded-2xl border border-slate-800 bg-slate-900/40 px-5 py-3.5 text-sm text-slate-300" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Upload Government ID</label>
+                <label className="flex items-center gap-3 rounded-xl border border-dashed border-slate-800 p-4 cursor-pointer">
+                  <input type="file" accept="image/*,.pdf" onChange={(e) => setGovIdFile(e.target.files?.[0] ? e.target.files![0].name : null)} className="hidden" />
+                  <span className="text-xs text-slate-400">Drag & drop or click to upload</span>
+                  {govIdFile && <span className="ml-auto text-xs text-teal-300">{govIdFile}</span>}
+                </label>
+
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Upload Selfie</label>
+                <label className="flex items-center gap-3 rounded-xl border border-dashed border-slate-800 p-4 cursor-pointer">
+                  <input type="file" accept="image/*" onChange={(e) => setSelfieFile(e.target.files?.[0] ? e.target.files![0].name : null)} className="hidden" />
+                  <span className="text-xs text-slate-400">Drag & drop or click to upload</span>
+                  {selfieFile && <span className="ml-auto text-xs text-teal-300">{selfieFile}</span>}
+                </label>
               </div>
             </div>
 
@@ -145,11 +181,24 @@ export default function SellerOnboardingPage() {
           </form>
         )}
 
+        {step === 'verify' && (
+          <div className="flex flex-col items-center justify-center text-center py-20">
+            <div className="h-24 w-24 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-500 flex items-center justify-center mb-6 shadow-lg">
+              <Shield className="h-10 w-10 text-white" />
+            </div>
+            <h3 className="text-lg font-bold text-white">Verifying Identity & Wallet</h3>
+            <p className="text-xs text-slate-500 mt-2">AI scanning, wallet verification and security checks are in progress.</p>
+            <div className="mt-6 w-64 h-2 rounded-full bg-slate-900/40 overflow-hidden">
+              <div className="h-full bg-gradient-to-r from-indigo-600 to-violet-600 animate-[progress_3s_linear]" style={{ width: '70%' }} />
+            </div>
+          </div>
+        )}
+
         {step === 'loading' && (
           <div className="flex flex-col items-center justify-center text-center py-20">
             <div className="h-12 w-12 animate-spin rounded-full border-4 border-slate-800 border-t-indigo-500 mb-6" />
-            <h3 className="text-lg font-bold text-white">Deploying Seller Smart Contract...</h3>
-            <p className="text-xs text-slate-500 mt-2">Broadcasting verification metadata to the blockchain.</p>
+            <h3 className="text-lg font-bold text-white">Finalizing Credentials...</h3>
+            <p className="text-xs text-slate-500 mt-2">Simulating on-chain mint and verification.</p>
           </div>
         )}
 
