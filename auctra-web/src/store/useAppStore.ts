@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { Auction, Collectible, LeaderboardEntry } from '../types';
+import { supabase } from '../server/supabase';
 
 interface AppState {
   // Authentication / Wallet
@@ -8,6 +9,16 @@ interface AppState {
   reputationXP: number;
   multiplier: number;
   artifactsCount: number;
+  
+  // Profile specific state fields
+  profileId: string | null;
+  profileName: string | null;
+  profileAvatar: string | null;
+  profileBio: string | null;
+  profileLevel: number;
+  profileRankTitle: string;
+  profileActiveBids: any[];
+  profileActivityLogs: any[];
   
   // Seller State
   isSeller: boolean;
@@ -230,6 +241,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   multiplier: 1.0,
   artifactsCount: 0,
 
+  // Profile specific state fields
+  profileId: null,
+  profileName: null,
+  profileAvatar: null,
+  profileBio: null,
+  profileLevel: 1,
+  profileRankTitle: 'Rookie',
+  profileActiveBids: [],
+  profileActivityLogs: [],
+
   // Seller State
   isSeller: false,
   sellerBio: '',
@@ -261,12 +282,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   connectWallet: () => {
     set({
       isConnected: true,
-      walletAddress: '0x8F3a2C...4D1A',
-      reputationXP: 2320,
-      multiplier: 1.15,
-      artifactsCount: 12,
-      collectibles: INITIAL_COLLECTIBLES
+      walletAddress: '0x7C2a69Df...D44E',
     });
+    // Dynamically fetch seeded AetherLord's database details to represent the active user profile
+    get().fetchProfileData('11111111-1111-1111-1111-111111111111');
   },
 
   disconnectWallet: () => {
@@ -276,7 +295,15 @@ export const useAppStore = create<AppState>((set, get) => ({
       reputationXP: 0,
       multiplier: 1.0,
       artifactsCount: 0,
-      collectibles: []
+      collectibles: [],
+      profileId: null,
+      profileName: null,
+      profileAvatar: null,
+      profileBio: null,
+      profileLevel: 1,
+      profileRankTitle: 'Rookie',
+      profileActiveBids: [],
+      profileActivityLogs: []
     });
   },
 
