@@ -1,19 +1,73 @@
 'use client';
 
-import { useState } from 'react';
-import { Settings, Shield, Bell, Network, User, CheckCircle2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Settings, Shield, Bell, Network, User, CheckCircle2, Upload, Loader2 } from 'lucide-react';
 import LayoutWrapper from '../../components/LayoutWrapper';
+import { usePrivy } from '@privy-io/react-auth';
+import { useProfile } from '../../hooks/useProfile';
+import { useAppStore } from '../../store/useAppStore';
 
 export default function SettingsPage() {
+  const { getAccessToken, user } = usePrivy();
+  const { name, avatar, loading: profileLoading } = useProfile();
+  const fetchProfileData = useAppStore((state) => state.fetchProfileData);
+  
   const [nickname, setNickname] = useState('Anon Collector');
   const [gasPreset, setGasPreset] = useState<'standard' | 'fast' | 'instant'>('fast');
   const [network, setNetwork] = useState('sepolia');
   const [isSaved, setIsSaved] = useState(false);
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
-  const handleSave = (e: React.FormEvent) => {
+  // Sync profile data once loaded
+  useEffect(() => {
+    if (name) {
+      setNickname(name);
+    }
+  }, [name]);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setAvatarFile(file);
+      setAvatarPreview(URL.createObjectURL(file));
+    }
+  };
+
+  const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 3000);
+    setIsUploading(true);
+
+    try {
+      const token = await getAccessToken();
+      
+      // Update Avatar if selected
+      if (avatarFile && token) {
+        const formData = new FormData();
+        formData.append('avatar', avatarFile);
+        
+        await fetch('/api/users/update-avatar', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`
+          },
+          body: formData
+        });
+        
+        // Refresh the global profile context so it fetches everywhere for the seller
+        if (user?.id) {
+          await fetchProfileData(user.id);
+        }
+      }
+
+      setIsSaved(true);
+      setTimeout(() => setIsSaved(false), 3000);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   const sidebarItems = [
@@ -64,6 +118,27 @@ export default function SettingsPage() {
               className="rounded-3xl border border-slate-800/40 bg-gradient-to-b from-slate-900/40 to-[#0B0F19]/80 p-8 flex flex-col gap-6 shadow-lg"
             >
               <h3 className="text-base font-bold text-white">Identity Configuration</h3>
+
+              {/* Avatar Upload */}
+              <div className="flex flex-col gap-3">
+                <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Profile Avatar
+                </label>
+                <div className="flex items-center gap-4">
+                  <div className="relative h-16 w-16 overflow-hidden rounded-full border-2 border-indigo-500/30 bg-slate-800 flex-shrink-0">
+                    <img 
+                      src={avatarPreview || avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} 
+                      alt="avatar" 
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                  <label className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900/50 px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-slate-800 hover:text-white transition-colors cursor-pointer">
+                    <Upload className="h-4 w-4" />
+                    Upload New Avatar
+                    <input type="file" accept="image/*" onChange={handleAvatarChange} className="hidden" />
+                  </label>
+                </div>
+              </div>
 
               {/* Nickname */}
               <div className="flex flex-col gap-2">
@@ -129,9 +204,10 @@ export default function SettingsPage() {
               {/* Save Button */}
               <button
                 type="submit"
-                className="mt-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 font-bold text-sm text-white hover:from-indigo-500 hover:to-violet-500 active:scale-95 shadow-[0_4px_25px_rgba(79,70,229,0.3)] transition-all cursor-pointer"
+                disabled={isUploading}
+                className="mt-2 flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 font-bold text-sm text-white hover:from-indigo-500 hover:to-violet-500 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_25px_rgba(79,70,229,0.3)] transition-all"
               >
-                Save Configurations
+                {isUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save Configurations'}
               </button>
             </form>
           </div>

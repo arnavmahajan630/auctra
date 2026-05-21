@@ -20,19 +20,18 @@ export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { isConnected, connectWallet } = useAuth();
-  const { isVerifiedSeller } = useProfile();
+  const { isVerifiedSeller, name, avatar } = useProfile();
 
   const navItems = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Explore Auctions', href: '/explore', icon: Compass },
     { name: 'Global Leaderboard', href: '/leaderboard', icon: Trophy },
-    { name: 'Collectibles & Rewards', href: '/profile', icon: Gem },
+    { name: 'Collectibles & Rewards', href: '/dashboard', icon: Gem },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
 
   // Extend nav for sellers
   if (isVerifiedSeller) {
-    navItems.splice(1, 0, { name: 'Seller Dashboard', href: '/seller/dashboard', icon: ShieldCheck });
+    navItems.splice(0, 0, { name: 'Seller Dashboard', href: '/seller/dashboard', icon: ShieldCheck });
   }
 
   return (
@@ -137,7 +136,7 @@ export default function Sidebar() {
           {isConnected ? (
             <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-indigo-500 to-pink-500 p-0.5 shadow-md flex-shrink-0">
               <img
-                src="https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=80&h=80&fit=crop&crop=faces"
+                src={avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=fallback"}
                 alt="Profile avatar"
                 className="h-full w-full rounded-full border border-black object-cover"
               />
@@ -146,7 +145,7 @@ export default function Sidebar() {
             <User className="h-5 w-5 text-slate-400 flex-shrink-0" />
           )}
           <span className="truncate">
-            {isConnected ? 'Account' : 'Profile'}
+            {isConnected ? (name || 'Account') : 'Profile'}
           </span>
         </Link>
       </div>

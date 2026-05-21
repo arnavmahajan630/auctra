@@ -62,82 +62,11 @@ interface AppState {
   openAuthModal: (message?: string, redirect?: string) => void;
   closeAuthModal: () => void;
   fetchLeaderboard: () => Promise<void>;
+  fetchAuctions: () => Promise<void>;
   fetchProfileData: (profileId: string) => Promise<void>;
   simulateProfileSwitch: (profileId: string) => Promise<void>;
 }
 
-const INITIAL_AUCTIONS: Auction[] = [
-  {
-    id: 'chronos-watch',
-    title: 'Chronos Elite Obsidian Watch',
-    description: 'A premium luxury timepiece with intricate dark-matter gears, custom carbon-fiber bezel, and glowing on-chain sapphire indexes.',
-    image: '/images/obsidian_watch.png',
-    currentBid: 4.25,
-    minBidIncrement: 0.1,
-    highestBidder: '0x3D9...F21A',
-    endsAt: new Date(Date.now() + 86400000 * 2).toISOString(), // 2 days from now
-    xpReward: 850,
-    status: 'active',
-    creator: 'ObsidianLabs',
-    bidsCount: 14
-  },
-  {
-    id: 'aetherial-shard',
-    title: 'Aetherial Shard #09',
-    description: 'A glowing levitating crystalline cluster pulsing with raw psychic energy, certified and registered on the Ethereum blockchain.',
-    image: '/images/aetherial_shard.png',
-    currentBid: 1.15,
-    minBidIncrement: 0.05,
-    highestBidder: '0x9E1...B50C',
-    endsAt: new Date(Date.now() + 86400000 * 1.5).toISOString(), // 1.5 days from now
-    xpReward: 320,
-    status: 'active',
-    creator: 'CrystalForge',
-    bidsCount: 8
-  },
-  {
-    id: 'nebula-core',
-    title: 'Nebula Core Prime',
-    description: 'A dynamic fusion core orb containing swirling high-energy dark plasma trapped inside a magnetic stasis ring.',
-    image: '/images/nebula_core.png',
-    currentBid: 0.85,
-    minBidIncrement: 0.02,
-    highestBidder: '0x7C2...D44E',
-    endsAt: new Date(Date.now() + 86400000 * 3).toISOString(), // 3 days from now
-    xpReward: 150,
-    status: 'active',
-    creator: 'StarForgeInc',
-    bidsCount: 5
-  },
-  {
-    id: 'quantum-ring',
-    title: 'Quantum Apex Ring',
-    description: 'A sleek black high-tech mechanical band featuring a micro-fusion cyan glow strip that links directly to owner reputation scores.',
-    image: '/images/quantum_ring.png',
-    currentBid: 2.10,
-    minBidIncrement: 0.05,
-    highestBidder: null,
-    endsAt: new Date(Date.now() + 45000000).toISOString(), // ~12 hours from now
-    xpReward: 450,
-    status: 'active',
-    creator: 'CyberForge',
-    bidsCount: 12
-  },
-  {
-    id: 'void-helmet',
-    title: 'Void Walker Helmet',
-    description: 'Ultra-durable nanoweave combat armor helmet fitted with a blue glowing ocular visor and deep vacuum oxygen regulators.',
-    image: '/images/void_helmet.png',
-    currentBid: 3.50,
-    minBidIncrement: 0.1,
-    highestBidder: '0x1F2...A98E',
-    endsAt: new Date(Date.now() + 86400000 * 4).toISOString(), // 4 days from now
-    xpReward: 600,
-    status: 'active',
-    creator: 'AegisSystems',
-    bidsCount: 22
-  }
-];
 
 const INITIAL_COLLECTIBLES: Collectible[] = [
   {
@@ -269,7 +198,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   wonAuctions: INITIAL_WON,
 
   // Lists
-  auctions: INITIAL_AUCTIONS,
+  auctions: [],
   collectibles: [],
   leaderboard: INITIAL_LEADERBOARD,
 
@@ -423,6 +352,38 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
   },
 
+  fetchAuctions: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('auctions')
+        .select(`*, profiles!auctions_seller_id_fkey(username, avatar_url)`)
+        .order('ends_at', { ascending: true });
+
+      if (error) throw error;
+      if (data) {
+        const mappedAuctions: Auction[] = data.map((row: any) => ({
+          id: row.id,
+          title: row.title,
+          description: row.description,
+          image: row.image_url,
+          currentBid: Number(row.current_price),
+          startingPrice: Number(row.starting_price),
+          minBidIncrement: Number(row.minimum_bid_increment),
+          highestBidder: row.highest_bidder,
+          endsAt: row.ends_at,
+          xpReward: row.xp_reward,
+          status: row.auction_status,
+          creator: row.profiles?.username || 'Unknown',
+          creatorAvatar: row.profiles?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback',
+          bidsCount: row.total_bids || 0
+        }));
+        set({ auctions: mappedAuctions });
+      }
+    } catch (error) {
+      console.error('Error fetching live auctions:', error);
+    }
+  },
+
   fetchProfileData: async (privyUserId: string) => {
     try {
       // 1. Fetch profile details using Privy DID
@@ -468,7 +429,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (bidsData) {
         bidsData.forEach((bid) => {
           const auction = bid.auction;
-          if (auction && auction.auction_status === 'active') {
+          if (auction && auction.auction_status === 'active' && new Date(auction.ends_at).getTime() > Date.now()) {
             const existingBid = activeBidsMap[auction.id];
             if (!existingBid || Number(bid.bid_amount) > Number(existingBid.currentBid)) {
               activeBidsMap[auction.id] = {
@@ -502,7 +463,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           activityLogs.push({
             type: 'Bid Submitted',
             item: bid.auction?.title || 'Unknown Asset',
-            amount: `${Number(bid.bid_amount).toFixed(2)} ETH`,
+            amount: `${Number(bid.bid_amount).toFixed(4)} ETH`,
             status: bid.is_winning_bid ? 'Winning' : 'Confirmed',
             txHash: bid.tx_hash ? `${bid.tx_hash.substring(0, 8)}...${bid.tx_hash.substring(bid.tx_hash.length - 4)}` : '0xUnknown',
             date: new Date(bid.created_at).toLocaleDateString() + ' ' + new Date(bid.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -515,7 +476,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           activityLogs.push({
             type: 'Artifact Won & Claimed',
             item: claim.auction?.title || 'Unknown Asset',
-            amount: `${Number(claim.amount_paid).toFixed(2)} ETH`,
+            amount: `${Number(claim.amount_paid).toFixed(4)} ETH`,
             status: 'Minted',
             txHash: claim.payment_tx_hash ? `${claim.payment_tx_hash.substring(0, 8)}...${claim.payment_tx_hash.substring(claim.payment_tx_hash.length - 4)}` : '0xUnknown',
             date: new Date(claim.claimed_at || claim.created_at).toLocaleDateString() + ' ' + new Date(claim.claimed_at || claim.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),

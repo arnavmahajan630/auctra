@@ -123,7 +123,7 @@ export default function ProfilePage() {
                   {/* Avatar */}
                   <div className="h-24 w-24 rounded-full bg-gradient-to-tr from-indigo-500 to-pink-500 p-0.5 shadow-md flex-shrink-0">
                     <img
-                      src={avatar || "https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=120&h=120&fit=crop&crop=faces"}
+                      src={avatar || "https://api.dicebear.com/7.x/avataaars/svg?seed=fallback"}
                       alt="Profile avatar"
                       className="h-full w-full rounded-full border border-black object-cover"
                     />
@@ -287,7 +287,7 @@ export default function ProfilePage() {
                     <div className="flex items-center justify-between border-t border-slate-800/20 pt-4 text-xs">
                       <div className="flex flex-col">
                         <span className="text-[10px] text-slate-500 font-bold uppercase">Your Active Bid</span>
-                        <span className="text-base font-extrabold text-white mt-0.5">{auction.currentBid.toFixed(2)} ETH</span>
+                        <span className="text-base font-extrabold text-white mt-0.5">{auction.currentBid.toFixed(4)} ETH</span>
                       </div>
                       <Link
                         href={`/explore/${auction.id}`}

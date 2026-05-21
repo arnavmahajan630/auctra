@@ -52,7 +52,7 @@ export default function CollectibleCard({ collectible, variant = 'standard' }: C
           <div className="flex items-center justify-between border-t border-slate-800/50 pt-5">
             <div className="flex flex-col gap-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Acquisition</span>
-              <span className="text-sm font-semibold text-slate-200">Won for {collectible.wonPrice.toFixed(2)} ETH</span>
+              <span className="text-sm font-semibold text-slate-200">Won for {collectible.wonPrice.toFixed(4)} ETH</span>
             </div>
             <div className="flex flex-col items-end gap-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Yield</span>
@@ -106,7 +106,7 @@ export default function CollectibleCard({ collectible, variant = 'standard' }: C
 
         <div className="flex items-center justify-between border-t border-slate-800/30 pt-4">
           <span className="text-xs text-slate-400">
-            Won for <span className="font-semibold text-slate-200">{collectible.wonPrice.toFixed(2)} ETH</span>
+            Won for <span className="font-semibold text-slate-200">{collectible.wonPrice.toFixed(4)} ETH</span>
           </span>
           <span className="flex items-center gap-1 text-xs font-bold text-teal-400">
             <Zap className="h-3 w-3 text-teal-400 animate-pulse" />

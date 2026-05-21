@@ -20,12 +20,14 @@ export interface Auction {
   description: string;
   image: string;
   currentBid: number;
+  startingPrice: number;
   minBidIncrement: number;
   highestBidder: string | null;
   endsAt: string; // ISO String
   xpReward: number;
   status: 'active' | 'ended' | 'upcoming';
   creator: string;
+  creatorAvatar?: string;
   bidsCount: number;
 }
 

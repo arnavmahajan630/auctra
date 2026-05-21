@@ -93,7 +93,7 @@ export default function AuctionCard({ auction }: { auction: Auction }) {
           <div className="flex flex-col">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Current Bid</span>
             <span className="text-lg font-extrabold text-white">
-              {auction.currentBid.toFixed(2)} <span className="text-xs font-semibold text-slate-400">ETH</span>
+              {auction.currentBid.toFixed(4)} <span className="text-xs font-semibold text-slate-400">ETH</span>
             </span>
           </div>
 

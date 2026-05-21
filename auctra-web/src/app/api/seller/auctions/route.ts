@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     const category = formData.get('category') as string; // Need to map to ID or string
     const startingPrice = parseFloat(formData.get('startingPrice') as string);
     const minBidIncrement = parseFloat(formData.get('minBidIncrement') as string);
-    const durationHours = parseInt(formData.get('durationHours') as string);
+    const durationHours = parseFloat(formData.get('durationHours') as string);
     const image = formData.get('image') as File | null;
 
     if (!title || !description || isNaN(startingPrice) || isNaN(durationHours)) {

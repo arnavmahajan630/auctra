@@ -3,10 +3,12 @@
 import { Search, HelpCircle, Bell, Wallet, LogOut } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useCollectibles } from '../hooks/useCollectibles';
+import { useProfile } from '../hooks/useProfile';
 
 export default function TopBar() {
   const { isConnected, walletAddress, connectWallet, disconnectWallet } = useAuth();
   const { reputationXP } = useCollectibles();
+  const { avatar } = useProfile();
 
   const formatAddress = (addr: string | null) => {
     if (!addr) return '';
@@ -69,14 +71,6 @@ export default function TopBar() {
               >
                 <LogOut className="h-3.5 w-3.5" />
               </button>
-            </div>
-
-            <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-indigo-500 to-pink-500 p-0.5 shadow-md flex-shrink-0">
-              <img
-                src="https://images.unsplash.com/photo-1633332755192-727a05c4013d?w=80&h=80&fit=crop&crop=faces"
-                alt="Profile avatar"
-                className="h-full w-full rounded-full border border-black object-cover"
-              />
             </div>
           </div>
         )}

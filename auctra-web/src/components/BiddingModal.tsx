@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Wallet, ShieldAlert, Sparkles, CheckCircle2 } from 'lucide-react';
 import { Auction } from '../types';
+import { useRouter } from 'next/navigation';
 import { useAuctions } from '../hooks/useAuctions';
 
 interface BiddingModalProps {
@@ -14,9 +15,21 @@ interface BiddingModalProps {
 
 export default function BiddingModal({ isOpen, onClose, auction }: BiddingModalProps) {
   const { placeBid } = useAuctions();
-  const [bidAmount, setBidAmount] = useState((auction.currentBid + auction.minBidIncrement).toFixed(2));
+  
+  const minimumAllowedBid = auction.bidsCount > 0 ? auction.currentBid + auction.minBidIncrement : auction.startingPrice;
+  
+  const [bidAmount, setBidAmount] = useState(minimumAllowedBid.toFixed(4));
   const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
+  const router = useRouter();
   const [errorMessage, setErrorMessage] = useState('');
+
+  const handleClose = () => {
+    if (status === 'success') {
+      window.location.reload(); // Quick refresh to get new bid log and price from DB
+    } else {
+      onClose();
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -51,7 +64,7 @@ export default function BiddingModal({ isOpen, onClose, auction }: BiddingModalP
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={onClose}
+            onClick={handleClose}
             className="absolute inset-0 bg-black/80 backdrop-blur-sm"
           />
 
@@ -65,7 +78,7 @@ export default function BiddingModal({ isOpen, onClose, auction }: BiddingModalP
           >
             {/* Close Button */}
             <motion.button
-              onClick={onClose}
+              onClick={handleClose}
               whileHover={{ scale: 1.05, rotate: 90 }}
               whileTap={{ scale: 0.95 }}
               className="absolute top-6 right-6 rounded-lg p-1.5 text-slate-400 hover:bg-white/5 hover:text-white transition-all cursor-pointer"
@@ -98,7 +111,7 @@ export default function BiddingModal({ isOpen, onClose, auction }: BiddingModalP
                 </p>
                 
                 <motion.button
-                  onClick={onClose}
+                  onClick={handleClose}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className="w-full rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3.5 font-bold text-sm text-white hover:from-indigo-500 hover:to-violet-500 active:scale-95 transition-all cursor-pointer"
@@ -125,7 +138,7 @@ export default function BiddingModal({ isOpen, onClose, auction }: BiddingModalP
                     <span className="text-sm font-bold text-slate-200 truncate">{auction.title}</span>
                     <span className="text-xs text-slate-400 mt-0.5">
                       Current highest bid:{' '}
-                      <span className="font-semibold text-indigo-400">{auction.currentBid.toFixed(2)} ETH</span>
+                      <span className="font-semibold text-indigo-400">{auction.currentBid.toFixed(4)} ETH</span>
                     </span>
                   </div>
                 </div>
@@ -139,7 +152,7 @@ export default function BiddingModal({ isOpen, onClose, auction }: BiddingModalP
                     <input
                       type="number"
                       step="0.01"
-                      min={auction.currentBid + auction.minBidIncrement}
+                      min={minimumAllowedBid}
                       value={bidAmount}
                       onChange={(e) => setBidAmount(e.target.value)}
                       disabled={status === 'loading'}
@@ -151,7 +164,7 @@ export default function BiddingModal({ isOpen, onClose, auction }: BiddingModalP
                     </span>
                   </div>
                   <span className="text-[10px] text-slate-500">
-                    Minimum bid: <span className="font-semibold">{(auction.currentBid + auction.minBidIncrement).toFixed(2)} ETH</span>
+                    Minimum bid: <span className="font-semibold">{minimumAllowedBid.toFixed(4)} ETH</span>
                   </span>
                 </div>
 

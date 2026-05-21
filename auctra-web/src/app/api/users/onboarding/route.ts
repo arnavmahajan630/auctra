@@ -77,6 +77,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: `Database error: ${error.message}` }, { status: 500 });
     }
 
+    // Get full user object from Privy to extract the wallet address
+    const privyUser = await privy.getUser(privyUserId);
+    const walletAddress = privyUser.wallet?.address || privyUser.linkedAccounts?.find(a => a.type === 'wallet')?.address;
+
+    if (walletAddress) {
+      await supabase.from('user_wallets').upsert({
+        user_id: profile.id,
+        wallet_address: walletAddress.toLowerCase(),
+        wallet_type: 'evm',
+        is_primary: true
+      }, { onConflict: 'wallet_address' });
+    }
+
     return NextResponse.json({ success: true, profile });
 
   } catch (err: any) {

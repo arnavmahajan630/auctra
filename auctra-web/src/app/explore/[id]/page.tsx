@@ -5,17 +5,61 @@ import Link from 'next/link';
 import { ArrowLeft, Timer, ShieldCheck, Zap, User, AlertCircle } from 'lucide-react';
 import LayoutWrapper from '../../../components/LayoutWrapper';
 import BiddingModal from '../../../components/BiddingModal';
-import { useAuctions } from '../../../hooks/useAuctions';
+import { supabase } from '@/server/supabase';
+import { Auction } from '../../../types';
 import { useAuth } from '../../../hooks/useAuth';
 
 export default function AuctionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const { isConnected, connectWallet } = useAuth();
-  const { getAuctionById } = useAuctions();
-
-  const auction = getAuctionById(resolvedParams.id);
+  const [auction, setAuction] = useState<Auction | null>(null);
+  const [bids, setBids] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isBidModalOpen, setIsBidModalOpen] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    const fetchAuction = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('auctions')
+        .select('*, profiles!auctions_seller_id_fkey(username, avatar_url)')
+        .eq('id', resolvedParams.id)
+        .single();
+      
+      if (!error && data) {
+        setAuction({
+          id: data.id,
+          title: data.title,
+          description: data.description,
+          image: data.image_url,
+          currentBid: Number(data.current_price),
+          startingPrice: Number(data.starting_price),
+          minBidIncrement: Number(data.minimum_bid_increment),
+          highestBidder: data.highest_bidder,
+          endsAt: data.ends_at,
+          xpReward: data.xp_reward,
+          status: data.auction_status,
+          creator: data.profiles?.username || 'Unknown',
+          creatorAvatar: data.profiles?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback',
+          bidsCount: data.total_bids || 0
+        });
+
+        // Fetch Bids
+        const { data: bidsData } = await supabase
+          .from('bids')
+          .select('*, profiles(username)')
+          .eq('auction_id', resolvedParams.id)
+          .order('created_at', { ascending: false });
+        
+        if (bidsData) {
+          setBids(bidsData);
+        }
+      }
+      setLoading(false);
+    };
+    fetchAuction();
+  }, [resolvedParams.id]);
 
   useEffect(() => {
     if (!auction) return;
@@ -38,6 +82,17 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
     return () => clearInterval(timer);
   }, [auction]);
 
+  if (loading) {
+    return (
+      <LayoutWrapper>
+        <div className="flex flex-col items-center justify-center py-24 text-center">
+          <div className="h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mb-4"></div>
+          <p className="text-slate-400 text-sm">Loading on-chain asset details...</p>
+        </div>
+      </LayoutWrapper>
+    );
+  }
+
   if (!auction) {
     return (
       <LayoutWrapper>
@@ -53,12 +108,17 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
     );
   }
 
-  const mockBidHistory = [
-    { bidder: auction.highestBidder || '0x3D9...F21A', amount: auction.currentBid, date: '10 mins ago', isYou: auction.highestBidder === '0x8F3a2C...4D1A' },
-    { bidder: '0x9E1...B50C', amount: auction.currentBid - 0.2, date: '2 hours ago', isYou: false },
-    { bidder: '0x7C2...D44E', amount: auction.currentBid - 0.45, date: '5 hours ago', isYou: false },
-    { bidder: '0x1F2...A98E', amount: auction.currentBid - 0.7, date: '1 day ago', isYou: false },
-  ];
+  // Helper for time ago
+  const timeAgo = (dateStr: string) => {
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 60) return `${minutes} mins ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} hours ago`;
+    return `${Math.floor(hours / 24)} days ago`;
+  };
+
+  const multiplierBoost = auction ? (1 + (auction.currentBid * 0.05)).toFixed(2) : '1.00';
 
   return (
     <LayoutWrapper>
@@ -92,15 +152,25 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
             </div>
 
             {/* Asset Info */}
-            <div className="flex flex-col gap-4">
-              <div>
-                <span className="text-[10px] font-bold tracking-widest text-indigo-400 uppercase">
-                  Created by {auction.creator}
-                </span>
-                <h1 className="text-3xl font-extrabold tracking-tight text-white mt-1">
-                  {auction.title}
-                </h1>
+            <div className="flex flex-col gap-5 mt-2">
+              <div className="flex items-center gap-3">
+                <img 
+                  src={auction.creatorAvatar} 
+                  alt={auction.creator} 
+                  className="w-10 h-10 rounded-full border-2 border-indigo-500/30 object-cover" 
+                />
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold tracking-widest text-indigo-400 uppercase">
+                    Creator
+                  </span>
+                  <span className="text-sm font-bold text-white">
+                    {auction.creator}
+                  </span>
+                </div>
               </div>
+              <h1 className="text-3xl font-extrabold tracking-tight text-white mt-1">
+                {auction.title}
+              </h1>
               <p className="text-sm text-slate-400 leading-relaxed">{auction.description}</p>
             </div>
           </div>
@@ -118,9 +188,12 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
               </div>
 
               <div className="flex flex-col gap-1 mb-8">
-                <span className="text-xs text-slate-400">Current highest bid</span>
+                <div className="flex justify-between items-end">
+                  <span className="text-xs text-slate-400">Current highest bid</span>
+                  <span className="text-xs text-slate-500">Starting at {auction.startingPrice.toFixed(4)} ETH</span>
+                </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-black text-white">{auction.currentBid.toFixed(2)}</span>
+                  <span className="text-4xl font-black text-white">{auction.currentBid.toFixed(4)}</span>
                   <span className="text-lg font-bold text-slate-400">ETH</span>
                   <span className="text-xs text-slate-500 ml-1">
                     (~${(auction.currentBid * 3500).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD)
@@ -145,13 +218,12 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
               )}
             </div>
 
-            {/* XP Yield */}
             <div className="flex items-center gap-4 rounded-2xl border border-teal-500/20 bg-teal-950/10 p-5">
               <Zap className="h-6 w-6 text-teal-400 flex-shrink-0" />
               <div>
                 <span className="font-bold text-slate-200 text-sm">Multiplier Yield Boost</span>
                 <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                  Winning rewards you with <span className="font-bold text-teal-400">+{auction.xpReward} XP</span> and boosts your reputation multiplier.
+                  Winning rewards you with <span className="font-bold text-teal-400">+{auction.xpReward} XP</span> and grants a <span className="font-bold text-teal-400">{multiplierBoost}x</span> reputation multiplier boost.
                 </p>
               </div>
             </div>
@@ -160,29 +232,31 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
             <div className="rounded-3xl border border-slate-800/40 bg-slate-900/30 p-6">
               <h3 className="text-sm font-bold tracking-tight text-white mb-4">Bid History Log</h3>
               <div className="flex flex-col gap-3">
-                {mockBidHistory.map((item, index) => (
-                  <div
-                    key={index}
-                    className={`flex items-center justify-between p-3 rounded-2xl border ${
-                      item.isYou ? 'border-indigo-500/30 bg-indigo-950/15' : 'border-slate-800/30 bg-slate-950/10'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 ${
-                        item.isYou ? 'bg-indigo-500/10 text-indigo-400' : 'bg-slate-900 text-slate-400'
-                      }`}>
-                        <User className="h-4 w-4" />
-                      </div>
-                      <div className="flex flex-col">
-                        <span className="text-xs font-mono font-bold text-slate-300">
-                          {item.isYou ? 'You (Anon)' : item.bidder}
-                        </span>
-                        <span className="text-[10px] text-slate-500">{item.date}</span>
-                      </div>
-                    </div>
-                    <span className="text-xs font-bold text-white">{item.amount.toFixed(2)} ETH</span>
+                {bids.length === 0 ? (
+                  <div className="text-center py-6 text-slate-500 text-sm italic">
+                    No bids yet. Be the first to bid!
                   </div>
-                ))}
+                ) : (
+                  bids.map((bid) => (
+                    <div
+                      key={bid.id}
+                      className="flex items-center justify-between p-3 rounded-2xl border border-slate-800/30 bg-slate-950/10"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="h-7 w-7 rounded-full flex items-center justify-center flex-shrink-0 bg-slate-900 text-slate-400">
+                          <User className="h-4 w-4" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-xs font-mono font-bold text-slate-300">
+                            {bid.profiles?.username || 'Unknown'}
+                          </span>
+                          <span className="text-[10px] text-slate-500">{timeAgo(bid.created_at)}</span>
+                        </div>
+                      </div>
+                      <span className="text-xs font-bold text-white">{Number(bid.bid_amount).toFixed(4)} ETH</span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>

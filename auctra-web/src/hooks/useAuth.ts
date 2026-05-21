@@ -1,5 +1,5 @@
-import { useAppStore } from '../store/useAppStore';
 import { useRouter } from 'next/navigation';
+import { usePrivy } from '@privy-io/react-auth';
 
 /**
  * Custom hook to manage wallet connection / authentication states.
@@ -9,45 +9,29 @@ import { useRouter } from 'next/navigation';
  * - Listen to chain-changed and accounts-changed events.
  */
 export function useAuth() {
-  const isConnected = useAppStore((state) => state.isConnected);
-  const walletAddress = useAppStore((state) => state.walletAddress);
-  const connectWallet = useAppStore((state) => state.connectWallet);
-  const disconnectWallet = useAppStore((state) => state.disconnectWallet);
-  const openAuthModal = useAppStore((s) => s.openAuthModal);
-  const closeAuthModal = useAppStore((s) => s.closeAuthModal);
-  const pendingAuthRedirect = useAppStore((s) => s.pendingAuthRedirect);
+  const { ready, authenticated, user, login, logout } = usePrivy();
   const router = useRouter();
 
   return {
-    isConnected,
-    walletAddress,
+    isConnected: authenticated,
+    walletAddress: user?.wallet?.address || null,
     
     // Actions
     // Connect without redirect (suitable for onClick handlers)
     connectWallet: async () => {
-      connectWallet();
-      await new Promise((r) => setTimeout(r, 600));
-      closeAuthModal();
-      // Navigate to pending redirect if set
-      if (pendingAuthRedirect) {
-        router.push(pendingAuthRedirect);
-      }
+      login();
     },
 
     // Connect and then redirect to a specific path
     connectWalletAndRedirect: async (redirectTo: string) => {
-      connectWallet();
-      await new Promise((r) => setTimeout(r, 600));
-      closeAuthModal();
-      router.push(redirectTo);
+      login();
+      // Redirection logic should be handled post-login or via Privy callbacks if possible
+      // but for simplicity we rely on the component's effects.
     },
 
   disconnectWallet: async () => {
-      // TODO: Call Privy's logout() or Wagmi's disconnect() here.
-      // Example:
-      // const { disconnect } = useDisconnect();
-      // disconnect();
-      disconnectWallet();
+      await logout();
+      router.push('/');
     }
   };
 }

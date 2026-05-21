@@ -7,20 +7,20 @@ import AuctionCard from '../../components/AuctionCard';
 import { supabase } from '@/server/supabase';
 import { Auction } from '../../types';
 
-type FilterType = 'all' | 'active' | 'upcoming' | 'high-value';
+type FilterType = 'active' | 'upcoming' | 'high-value' | 'ended';
 
 export default function ExplorePage() {
   useRequireAuth();
   const [auctions, setAuctions] = useState<Auction[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+  const [activeFilter, setActiveFilter] = useState<FilterType>('active');
 
   useEffect(() => {
     const fetchLiveAuctions = async () => {
       setLoading(true);
       const { data, error } = await supabase
         .from('auctions')
-        .select(`*, profiles(username, avatar_url)`)
+        .select(`*, profiles!auctions_seller_id_fkey(username, avatar_url)`)
         .order('ends_at', { ascending: true });
         
       if (!error && data) {
@@ -30,12 +30,14 @@ export default function ExplorePage() {
           description: row.description,
           image: row.image_url,
           currentBid: Number(row.current_price),
+          startingPrice: Number(row.starting_price),
           minBidIncrement: Number(row.minimum_bid_increment),
           highestBidder: row.highest_bidder,
           endsAt: row.ends_at,
           xpReward: row.xp_reward,
           status: row.auction_status,
           creator: row.profiles?.username || 'Unknown',
+          creatorAvatar: row.profiles?.avatar_url || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback',
           bidsCount: row.total_bids || 0
         }));
         setAuctions(mapped);
@@ -47,18 +49,21 @@ export default function ExplorePage() {
   }, []);
 
   const filteredAuctions = auctions.filter((auction) => {
-    if (activeFilter === 'all') return true;
-    if (activeFilter === 'active') return auction.status === 'active';
-    if (activeFilter === 'upcoming') return auction.status === 'upcoming';
-    if (activeFilter === 'high-value') return auction.currentBid >= 2.0;
+    const isEnded = new Date(auction.endsAt).getTime() <= Date.now();
+    const effectiveStatus = isEnded ? 'ended' : auction.status;
+
+    if (activeFilter === 'active') return effectiveStatus === 'active';
+    if (activeFilter === 'upcoming') return effectiveStatus === 'upcoming';
+    if (activeFilter === 'high-value') return auction.currentBid >= 2.0 && effectiveStatus === 'active';
+    if (activeFilter === 'ended') return effectiveStatus === 'ended';
     return true;
   });
 
   const filterTabs: { id: FilterType; label: string }[] = [
-    { id: 'all', label: 'All Auctions' },
     { id: 'active', label: 'Live Active' },
     { id: 'upcoming', label: 'Upcoming' },
     { id: 'high-value', label: 'High Value' },
+    { id: 'ended', label: 'Ended Auctions' },
   ];
 
   return (

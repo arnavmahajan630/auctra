@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Info } from 'lucide-react';
 import LayoutWrapper from '../../../components/LayoutWrapper';
 import { useAppStore } from '../../../store/useAppStore';
 import { useRouter } from 'next/navigation';
@@ -15,8 +16,13 @@ export default function ListNewPage() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [startingBid, setStartingBid] = useState('0.5');
-  const [duration, setDuration] = useState('48');
+  const [usdPrice, setUsdPrice] = useState('1750');
+  const [durationDays, setDurationDays] = useState('2');
+  const [durationHours, setDurationHours] = useState('0');
+  const [durationMinutes, setDurationMinutes] = useState('0');
+  
+  const ETH_PRICE_USD = 3500;
+  const ethValue = usdPrice ? (parseFloat(usdPrice) / ETH_PRICE_USD) : 0;
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -36,12 +42,20 @@ export default function ListNewPage() {
     setError(null);
     
     try {
+      const totalMinutes = (parseInt(durationDays || '0') * 24 * 60) + (parseInt(durationHours || '0') * 60) + parseInt(durationMinutes || '0');
+      if (totalMinutes <= 0) {
+        setError('Auction duration must be greater than 0 minutes.');
+        setSubmitting(false);
+        return;
+      }
+      const totalHours = totalMinutes / 60;
+
       const token = await getAccessToken();
       const formData = new FormData();
       formData.append('title', title);
       formData.append('description', description);
-      formData.append('startingPrice', startingBid);
-      formData.append('durationHours', duration);
+      formData.append('startingPrice', ethValue.toString());
+      formData.append('durationHours', totalHours.toString());
       if (imageFile) formData.append('image', imageFile);
 
       const res = await fetch('/api/seller/auctions', {
@@ -101,14 +115,36 @@ export default function ListNewPage() {
                 {imagePreview && <img src={imagePreview} className="h-28 w-28 rounded-lg object-cover border border-slate-700" />}
               </div>
 
-              <div className="grid grid-cols-2 gap-4 mt-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 pb-4">
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase">Starting Bid (ETH)</label>
-                  <input value={startingBid} onChange={(e) => setStartingBid(e.target.value)} className="w-full rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white" />
+                  <label className="text-xs font-bold text-slate-400 uppercase">Starting Bid (USD)</label>
+                  <div className="relative mt-1">
+                    <span className="absolute left-4 top-3.5 text-slate-400 font-bold">$</span>
+                    <input type="number" step="0.01" min="0" value={usdPrice} onChange={(e) => setUsdPrice(e.target.value)} className="w-full rounded-2xl border border-slate-800 bg-slate-950/60 pl-8 pr-4 py-3 text-sm text-white focus:border-indigo-500 focus:outline-none transition-all" />
+                  </div>
+                  <div className="text-[11px] text-indigo-300/80 mt-2 font-mono flex items-center gap-1.5">
+                    <span>≈</span>
+                    <span>{ethValue > 0 ? ethValue.toFixed(6).replace(/\.?0+$/, '') : '0'} ETH</span>
+                  </div>
                 </div>
                 <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase">Duration (hours)</label>
-                  <input value={duration} onChange={(e) => setDuration(e.target.value)} className="w-full rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white" />
+                  <label className="text-xs font-bold text-slate-400 uppercase mb-3 block">Duration</label>
+                  <div className="flex items-center gap-2">
+                    <div className="flex flex-col relative w-full">
+                      <input type="number" min="0" value={durationDays} onChange={(e) => setDurationDays(e.target.value)} className="w-full rounded-2xl border border-slate-800 bg-slate-950/60 px-2 py-3 text-sm text-white text-center focus:border-indigo-500 focus:outline-none transition-all" />
+                      <span className="text-[10px] text-slate-500 absolute -bottom-5 left-1/2 -translate-x-1/2 font-medium">Days</span>
+                    </div>
+                    <span className="text-slate-600 font-bold">:</span>
+                    <div className="flex flex-col relative w-full">
+                      <input type="number" min="0" max="23" value={durationHours} onChange={(e) => setDurationHours(e.target.value)} className="w-full rounded-2xl border border-slate-800 bg-slate-950/60 px-2 py-3 text-sm text-white text-center focus:border-indigo-500 focus:outline-none transition-all" />
+                      <span className="text-[10px] text-slate-500 absolute -bottom-5 left-1/2 -translate-x-1/2 font-medium">Hours</span>
+                    </div>
+                    <span className="text-slate-600 font-bold">:</span>
+                    <div className="flex flex-col relative w-full">
+                      <input type="number" min="0" max="59" value={durationMinutes} onChange={(e) => setDurationMinutes(e.target.value)} className="w-full rounded-2xl border border-slate-800 bg-slate-950/60 px-2 py-3 text-sm text-white text-center focus:border-indigo-500 focus:outline-none transition-all" />
+                      <span className="text-[10px] text-slate-500 absolute -bottom-5 left-1/2 -translate-x-1/2 font-medium">Mins</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -124,7 +160,7 @@ export default function ListNewPage() {
                   <div className="text-xs text-slate-400">Creator • You</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-extrabold text-white">{parseFloat(startingBid).toFixed(2)} ETH</div>
+                  <div className="text-sm font-extrabold text-white">{ethValue > 0 ? ethValue.toFixed(6).replace(/\.?0+$/, '') : '0'} ETH</div>
                   <div className="text-xs text-slate-500">Reserve: --</div>
                 </div>
               </div>
@@ -133,6 +169,13 @@ export default function ListNewPage() {
             <button type="submit" disabled={submitting} className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3 font-bold text-white hover:from-indigo-500 hover:to-violet-500 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
               {submitting ? 'Listing on Network...' : 'Create Listing'}
             </button>
+
+            <div className="flex items-start gap-2 mt-2 px-1">
+              <Info className="h-4 w-4 text-indigo-400 flex-shrink-0 mt-0.5" />
+              <p className="text-[11px] text-slate-400 leading-snug">
+                By creating this listing, you agree to the platform terms. A <span className="font-bold text-slate-300">2% platform fee</span> will be deducted from the total winning bid.
+              </p>
+            </div>
           </div>
         </form>
       </div>

@@ -49,7 +49,7 @@ export default function Navbar() {
                 className="flex items-center gap-3 rounded-full border border-slate-800 bg-slate-900/50 p-1 pr-4 transition-all hover:bg-slate-800/50"
               >
                 <img 
-                  src={avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=80&h=80&fit=crop'} 
+                  src={avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} 
                   alt="Avatar" 
                   className="h-8 w-8 rounded-full object-cover border border-slate-700"
                 />

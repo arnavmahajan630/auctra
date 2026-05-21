@@ -5,9 +5,11 @@ import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import PageTransition from './PageTransition';
 import { AnimatePresence } from 'framer-motion';
+import { usePathname } from 'next/navigation';
 
 export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
   // Elite Mouse-Follow Spotlight Glow effect (GPU accelerated CSS variables)
   useEffect(() => {
@@ -67,7 +69,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
         {/* Inner Page Main Contents with Staggered Transition wrapper */}
         <main className="flex-1 px-10 py-8 overflow-y-auto">
           <AnimatePresence mode="wait">
-            <PageTransition>
+            <PageTransition key={pathname}>
               {children}
             </PageTransition>
           </AnimatePresence>

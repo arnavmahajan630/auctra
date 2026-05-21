@@ -60,8 +60,8 @@ export default function SellerDashboardPage() {
               </div>
               <div>
                 <div className="text-xs text-slate-400 font-semibold">Revenue</div>
-                <div className="text-2xl font-extrabold text-white">{revenueMock.total.toFixed(2)} ETH</div>
-                <div className="text-xs text-slate-500">Last month: {revenueMock.lastMonth.toFixed(2)} ETH</div>
+                <div className="text-2xl font-extrabold text-white">{revenueMock.total.toFixed(4)} ETH</div>
+                <div className="text-xs text-slate-500">Last month: {revenueMock.lastMonth.toFixed(4)} ETH</div>
               </div>
             </div>
           </motion.div>
@@ -110,11 +110,13 @@ export default function SellerDashboardPage() {
                       <img src={l.image_url} alt={l.title} className="h-14 w-14 rounded-lg object-cover border border-slate-800" />
                       <div>
                         <div className="text-sm font-bold text-white">{l.title}</div>
-                        <div className="text-xs text-slate-400">Live • {l.total_bids || 0} bids</div>
+                        <div className="text-xs text-slate-400">
+                          {new Date(l.ends_at).getTime() <= Date.now() ? 'Ended' : 'Live'} • {l.total_bids || 0} bids
+                        </div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm font-extrabold text-white">{Number(l.current_price).toFixed(2)} ETH</div>
+                      <div className="text-sm font-extrabold text-white">{Number(l.current_price).toFixed(4)} ETH</div>
                       <div className="text-xs text-slate-500">
                         Ends: {new Date(l.ends_at).toLocaleDateString()}
                       </div>

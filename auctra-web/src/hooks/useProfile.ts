@@ -10,7 +10,10 @@ export function useProfile() {
   const { user, authenticated, ready } = usePrivy();
   
   const isConnected = useAppStore((state) => state.isConnected) || authenticated;
-  const walletAddress = useAppStore((state) => state.walletAddress);
+  let walletAddress = useAppStore((state) => state.walletAddress);
+  if (!walletAddress || walletAddress.startsWith('0xUnknown')) {
+    walletAddress = user?.wallet?.address || '0xUnknown...';
+  }
   const profileId = useAppStore((state) => state.profileId);
   const profileName = useAppStore((state) => state.profileName);
   const profileAvatar = useAppStore((state) => state.profileAvatar);
