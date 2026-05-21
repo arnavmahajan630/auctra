@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Shield, Globe, Award, Sparkles, CheckCircle2, ChevronRight } from 'lucide-react';
@@ -8,13 +8,22 @@ import { useSeller } from '../../hooks/useSeller';
 import { useAuth } from '../../hooks/useAuth';
 import useRequireAuth from '../../hooks/useRequireAuth';
 import { useAppStore } from '../../store/useAppStore';
+import { usePrivy } from '@privy-io/react-auth';
 
 export default function SellerOnboardingPage() {
   const router = useRouter();
   const { isConnected } = useAuth();
-  useRequireAuth();
-  const openAuth = useAppStore((s) => s.openAuthModal);
-  const { initializeSeller, registerSellerProfile } = useSeller();
+  const { getAccessToken, login } = usePrivy();
+  const isVerifiedSeller = useAppStore((state) => state.isVerifiedSeller);
+  
+  // If already verified, redirect to seller dashboard
+  React.useEffect(() => {
+    if (isVerifiedSeller) {
+      router.replace('/seller/dashboard');
+    }
+  }, [isVerifiedSeller, router]);
+
+  const openAuth = (msg: string, redirect?: string) => login(); // fallback for openAuth
 
   const [step, setStep] = useState<'info' | 'form' | 'verify' | 'loading' | 'success'>('info');
   const [bio, setBio] = useState('');
@@ -33,18 +42,41 @@ export default function SellerOnboardingPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Start verification animation
     setStep('verify');
-    setTimeout(async () => {
-      setStep('loading');
-      // register seller profile (simulated KYC)
-      if (registerSellerProfile) {
-        await registerSellerProfile({ fullName, email, phone, country, walletAddress: '0x8F3a2C...4D1A', govId: govIdFile || '', selfie: selfieFile || '' });
-      } else {
-        await initializeSeller(bio);
-      }
-      setTimeout(() => setStep('success'), 1200);
-    }, 1800);
+    
+    try {
+      const token = await getAccessToken();
+      
+      const formData = new FormData();
+      formData.append('fullName', fullName);
+      formData.append('email', email);
+      formData.append('phone', phone);
+      formData.append('country', country);
+      
+      setTimeout(async () => {
+        setStep('loading');
+        
+        const res = await fetch('/api/seller/onboarding', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`
+          },
+          body: formData
+        });
+
+        if (res.ok) {
+          // Update local zustand state to reflect the verified status immediately
+          useAppStore.setState({ isVerifiedSeller: true, sellerStatus: 'verified' });
+          setTimeout(() => setStep('success'), 800);
+        } else {
+          console.error("Failed to onboard seller");
+          setStep('info'); // Fallback or show error
+        }
+      }, 1500); // Small delay to show the nice verify animation
+    } catch (e) {
+      console.error(e);
+      setStep('info');
+    }
   };
 
   return (
@@ -212,7 +244,7 @@ export default function SellerOnboardingPage() {
               Your seller credentials have been successfully minted. Welcome to the elite tier.
             </p>
             <button
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push('/seller/dashboard')}
               className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-8 py-3.5 font-bold text-sm text-white hover:from-indigo-500 hover:to-violet-500 active:scale-95 shadow-[0_4px_25px_rgba(79,70,229,0.3)] transition-all cursor-pointer"
             >
               Enter Seller Arena

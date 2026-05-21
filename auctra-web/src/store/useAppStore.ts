@@ -17,6 +17,8 @@ interface AppState {
   profileBio: string | null;
   profileLevel: number;
   profileRankTitle: string;
+  isVerifiedSeller: boolean;
+  sellerStatus: string;
   profileActiveBids: any[];
   profileActivityLogs: any[];
   
@@ -59,6 +61,9 @@ interface AppState {
   pendingAuthRedirect: string | null;
   openAuthModal: (message?: string, redirect?: string) => void;
   closeAuthModal: () => void;
+  fetchLeaderboard: () => Promise<void>;
+  fetchProfileData: (profileId: string) => Promise<void>;
+  simulateProfileSwitch: (profileId: string) => Promise<void>;
 }
 
 const INITIAL_AUCTIONS: Auction[] = [
@@ -248,6 +253,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   profileBio: null,
   profileLevel: 1,
   profileRankTitle: 'Rookie',
+  isVerifiedSeller: false,
+  sellerStatus: 'none',
   profileActiveBids: [],
   profileActivityLogs: [],
 
@@ -302,6 +309,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       profileBio: null,
       profileLevel: 1,
       profileRankTitle: 'Rookie',
+      isVerifiedSeller: false,
+      sellerStatus: 'none',
       profileActiveBids: [],
       profileActivityLogs: []
     });
@@ -395,5 +404,161 @@ export const useAppStore = create<AppState>((set, get) => ({
     await new Promise((r) => setTimeout(r, 1600));
     set({ collectibles: [item, ...collectibles], wonAuctions: wonAuctions.filter((c) => c.id !== collectibleId) });
     return { success: true };
+  },
+
+  fetchLeaderboard: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('view_leaderboard')
+        .select('*')
+        .order('rank', { ascending: true });
+
+      if (error) throw error;
+      if (data) {
+        set({ leaderboard: data as LeaderboardEntry[] });
+      }
+    } catch (error) {
+      console.error('Error fetching leaderboard:', error);
+      throw error;
+    }
+  },
+
+  fetchProfileData: async (privyUserId: string) => {
+    try {
+      // 1. Fetch profile details using Privy DID
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('privy_user_id', privyUserId)
+        .single();
+
+      if (profileError) throw profileError;
+      if (!profile) throw new Error('Profile not found');
+
+      const profileId = profile.id;
+
+      // 2. Fetch primary wallet
+      const { data: walletData } = await supabase
+        .from('user_wallets')
+        .select('wallet_address')
+        .eq('user_id', profileId)
+        .eq('is_primary', true)
+        .single();
+
+      const walletAddress = walletData?.wallet_address || '0xUnknown...';
+
+      // 3. Fetch collectibles
+      const { data: collectibles, error: collError } = await supabase
+        .from('view_collectibles')
+        .select('*')
+        .eq('owner_id', profileId);
+
+      if (collError) throw collError;
+
+      // 4. Fetch bids for active bids tab
+      const { data: bidsData, error: bidsError } = await supabase
+        .from('bids')
+        .select('*, auction:auctions(*)')
+        .eq('bidder_id', profileId);
+
+      if (bidsError) throw bidsError;
+
+      // Filter active bids: group by auction_id, keep the highest bid, only where auction is active
+      const activeBidsMap: Record<string, any> = {};
+      if (bidsData) {
+        bidsData.forEach((bid) => {
+          const auction = bid.auction;
+          if (auction && auction.auction_status === 'active') {
+            const existingBid = activeBidsMap[auction.id];
+            if (!existingBid || Number(bid.bid_amount) > Number(existingBid.currentBid)) {
+              activeBidsMap[auction.id] = {
+                id: auction.id,
+                title: auction.title,
+                image: auction.image_url,
+                currentBid: Number(bid.bid_amount),
+                creator: 'Oktra Creator',
+                xpReward: auction.xp_reward,
+                endsAt: auction.ends_at,
+                highestBidder: walletAddress
+              };
+            }
+          }
+        });
+      }
+      const activeBids = Object.values(activeBidsMap);
+
+      // 5. Fetch claims for transaction feed
+      const { data: claimsData, error: claimsError } = await supabase
+        .from('claims')
+        .select('*, auction:auctions(title)')
+        .eq('winner_user_id', profileId);
+
+      if (claimsError) throw claimsError;
+
+      // Merge bids and claims into activity feed sorted by date descending
+      const activityLogs: any[] = [];
+      if (bidsData) {
+        bidsData.forEach((bid) => {
+          activityLogs.push({
+            type: 'Bid Submitted',
+            item: bid.auction?.title || 'Unknown Asset',
+            amount: `${Number(bid.bid_amount).toFixed(2)} ETH`,
+            status: bid.is_winning_bid ? 'Winning' : 'Confirmed',
+            txHash: bid.tx_hash ? `${bid.tx_hash.substring(0, 8)}...${bid.tx_hash.substring(bid.tx_hash.length - 4)}` : '0xUnknown',
+            date: new Date(bid.created_at).toLocaleDateString() + ' ' + new Date(bid.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            rawDate: new Date(bid.created_at)
+          });
+        });
+      }
+      if (claimsData) {
+        claimsData.forEach((claim) => {
+          activityLogs.push({
+            type: 'Artifact Won & Claimed',
+            item: claim.auction?.title || 'Unknown Asset',
+            amount: `${Number(claim.amount_paid).toFixed(2)} ETH`,
+            status: 'Minted',
+            txHash: claim.payment_tx_hash ? `${claim.payment_tx_hash.substring(0, 8)}...${claim.payment_tx_hash.substring(claim.payment_tx_hash.length - 4)}` : '0xUnknown',
+            date: new Date(claim.claimed_at || claim.created_at).toLocaleDateString() + ' ' + new Date(claim.claimed_at || claim.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            rawDate: new Date(claim.claimed_at || claim.created_at)
+          });
+        });
+      }
+      activityLogs.sort((a, b) => b.rawDate.getTime() - a.rawDate.getTime());
+
+      // Update state
+      set({
+        isConnected: true,
+        profileId,
+        walletAddress,
+        profileName: profile.display_name || profile.username,
+        profileAvatar: profile.avatar_url,
+        profileBio: profile.bio || 'Digital collector of elite on-chain artifacts.',
+        reputationXP: profile.xp,
+        multiplier: Number(profile.multiplier),
+        artifactsCount: profile.total_auctions_won,
+        profileLevel: profile.level,
+        profileRankTitle: profile.rank_title,
+        isVerifiedSeller: profile.is_verified_seller,
+        sellerStatus: profile.seller_status,
+        collectibles: (collectibles || []).map(c => ({
+          id: c.id,
+          title: c.title,
+          image: c.image,
+          wonPrice: Number(c.wonPrice),
+          xpReward: c.xpReward,
+          mintedDate: c.mintedDate,
+          txHash: c.txHash
+        })),
+        profileActiveBids: activeBids,
+        profileActivityLogs: activityLogs
+      });
+    } catch (error) {
+      console.error('Error fetching profile data:', error);
+      throw error;
+    }
+  },
+
+  simulateProfileSwitch: async (profileId: string) => {
+    await get().fetchProfileData(profileId);
   }
 }));

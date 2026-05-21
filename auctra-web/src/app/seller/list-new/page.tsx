@@ -6,50 +6,67 @@ import { useAppStore } from '../../../store/useAppStore';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import useRequireAuth from '../../../../src/hooks/useRequireAuth';
+import { usePrivy } from '@privy-io/react-auth';
 
 export default function ListNewPage() {
   useRequireAuth();
   const router = useRouter();
-  const createListing = useAppStore((s) => s.createListing);
+  const { getAccessToken } = usePrivy();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [startingBid, setStartingBid] = useState('0.5');
   const [duration, setDuration] = useState('48');
-  const [image, setImage] = useState<string | null>(null);
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleImage = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setImageFile(file);
     const url = URL.createObjectURL(file);
-    setImage(url);
+    setImagePreview(url);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    const newId = `listing-${Date.now()}`;
-    await createListing({
-      id: newId,
-      title: title || 'Untitled Artifact',
-      description: description || 'No description',
-      image: image || '/images/obsidian_watch.png',
-      currentBid: parseFloat(startingBid),
-      minBidIncrement: 0.01,
-      highestBidder: null,
-      endsAt: new Date(Date.now() + parseInt(duration) * 3600000).toISOString(),
-      xpReward: 120,
-      status: 'active',
-      creator: 'You',
-      bidsCount: 0
-    } as any);
+    setError(null);
+    
+    try {
+      const token = await getAccessToken();
+      const formData = new FormData();
+      formData.append('title', title);
+      formData.append('description', description);
+      formData.append('startingPrice', startingBid);
+      formData.append('durationHours', duration);
+      if (imageFile) formData.append('image', imageFile);
 
-    // small delay for UX
-    setTimeout(() => {
+      const res = await fetch('/api/seller/auctions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`
+        },
+        body: formData
+      });
+
+      if (res.ok) {
+        setTimeout(() => {
+          setSubmitting(false);
+          router.push('/seller/dashboard');
+        }, 1200);
+      } else {
+        const data = await res.json();
+        setError(data.error || 'Failed to create auction');
+        setSubmitting(false);
+      }
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'An error occurred');
       setSubmitting(false);
-      router.push('/seller/dashboard');
-    }, 1200);
+    }
   };
 
   return (
@@ -57,8 +74,14 @@ export default function ListNewPage() {
       <div className="flex flex-col gap-8 animate-fade-in">
         <div>
           <h1 className="text-3xl font-extrabold text-white">List New Item</h1>
-          <p className="text-sm text-slate-400">Create a new auction listing. This is a simulated flow — no real blockchain transactions.</p>
+          <p className="text-sm text-slate-400">Create a new auction listing on the live network.</p>
         </div>
+
+        {error && (
+          <div className="rounded-lg bg-rose-500/10 border border-rose-500/20 p-3 text-sm text-rose-400">
+            {error}
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 rounded-3xl border border-slate-800/40 bg-slate-900/30 p-6">
@@ -71,11 +94,11 @@ export default function ListNewPage() {
 
               <label className="text-xs font-bold text-slate-400 uppercase">Images</label>
               <div className="flex items-center gap-3">
-                <label className="w-44 h-28 flex items-center justify-center rounded-xl border border-dashed border-slate-800 cursor-pointer">
+                <label className="w-44 h-28 flex items-center justify-center rounded-xl border border-dashed border-slate-800 cursor-pointer hover:bg-slate-800/50 transition-colors">
                   <input type="file" accept="image/*" onChange={handleImage} className="hidden" />
                   <span className="text-xs text-slate-400">Drag or upload</span>
                 </label>
-                {image && <img src={image} className="h-28 w-28 rounded-lg object-cover" />}
+                {imagePreview && <img src={imagePreview} className="h-28 w-28 rounded-lg object-cover border border-slate-700" />}
               </div>
 
               <div className="grid grid-cols-2 gap-4 mt-4">
@@ -94,7 +117,7 @@ export default function ListNewPage() {
           <div className="rounded-3xl border border-slate-800/40 bg-slate-900/30 p-6 flex flex-col gap-4">
             <h3 className="text-sm font-bold text-white">Live Preview</h3>
             <div className="rounded-xl overflow-hidden border border-slate-800/20 bg-slate-950/20 p-4">
-              <img src={image || '/images/aetherial_shard.png'} alt="preview" className="h-40 w-full object-cover rounded-lg mb-3" />
+              <img src={imagePreview || 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop'} alt="preview" className="h-40 w-full object-cover rounded-lg mb-3" />
               <div className="flex items-center justify-between">
                 <div>
                   <div className="text-sm font-bold text-white">{title || 'Untitled Artifact'}</div>
@@ -107,8 +130,8 @@ export default function ListNewPage() {
               </div>
             </div>
 
-            <button type="submit" disabled={submitting} className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3 font-bold text-white">
-              {submitting ? 'Listing...' : 'Create Listing & Mint (Simulated)'}
+            <button type="submit" disabled={submitting} className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 py-3 font-bold text-white hover:from-indigo-500 hover:to-violet-500 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed transition-all">
+              {submitting ? 'Listing on Network...' : 'Create Listing'}
             </button>
           </div>
         </form>

@@ -1,23 +1,46 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import LayoutWrapper from '../../../components/LayoutWrapper';
 import { ChartPie, List, DollarSign, Activity, Package, Zap, Plus } from 'lucide-react';
-import { useAppStore } from '../../../store/useAppStore';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import useRequireAuth from '../../../../src/hooks/useRequireAuth';
+import { useProfile } from '../../../../src/hooks/useProfile';
+import { supabase } from '@/server/supabase';
 
 export default function SellerDashboardPage() {
   useRequireAuth();
-  const sellerListings = useAppStore((s) => s.sellerListings);
-  const sellerBio = useAppStore((s) => s.sellerBio);
+  const { profileId, bio } = useProfile();
   const router = useRouter();
+  const [sellerListings, setSellerListings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const revenueMock = {
-    total: 24.35,
+    total: sellerListings.reduce((acc, curr) => acc + Number(curr.current_price), 0),
     lastMonth: 8.2,
     lastWeek: 1.6
   };
+
+  useEffect(() => {
+    if (!profileId) return;
+    
+    const fetchListings = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('auctions')
+        .select('*')
+        .eq('seller_id', profileId)
+        .order('created_at', { ascending: false });
+        
+      if (!error && data) {
+        setSellerListings(data);
+      }
+      setLoading(false);
+    };
+    
+    fetchListings();
+  }, [profileId]);
 
   return (
     <LayoutWrapper>
@@ -73,22 +96,28 @@ export default function SellerDashboardPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 rounded-3xl border border-slate-800/40 bg-slate-900/30 p-6">
             <h3 className="text-sm font-bold text-white mb-4">Recent Listings</h3>
-            {sellerListings.length === 0 ? (
+            {loading ? (
+              <div className="text-slate-400 text-sm flex items-center justify-center py-6">
+                <div className="h-6 w-6 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            ) : sellerListings.length === 0 ? (
               <div className="text-slate-400 text-sm">No listings yet. Use "List New Item" to create your first auction.</div>
             ) : (
               <div className="flex flex-col gap-4">
                 {sellerListings.map((l) => (
-                  <div key={l.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-800/20 bg-slate-950/20">
+                  <div key={l.id} className="flex items-center justify-between p-3 rounded-xl border border-slate-800/20 bg-slate-950/20 hover:bg-slate-900/50 transition-colors cursor-pointer">
                     <div className="flex items-center gap-3">
-                      <img src={l.image} alt={l.title} className="h-14 w-14 rounded-lg object-cover border" />
+                      <img src={l.image_url} alt={l.title} className="h-14 w-14 rounded-lg object-cover border border-slate-800" />
                       <div>
                         <div className="text-sm font-bold text-white">{l.title}</div>
-                        <div className="text-xs text-slate-400">{l.creator} • {l.bidsCount} bids</div>
+                        <div className="text-xs text-slate-400">Live • {l.total_bids || 0} bids</div>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="text-sm font-extrabold text-white">{l.currentBid.toFixed(2)} ETH</div>
-                      <div className="text-xs text-slate-500">Ends in: TBD</div>
+                      <div className="text-sm font-extrabold text-white">{Number(l.current_price).toFixed(2)} ETH</div>
+                      <div className="text-xs text-slate-500">
+                        Ends: {new Date(l.ends_at).toLocaleDateString()}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -98,7 +127,7 @@ export default function SellerDashboardPage() {
 
           <div className="rounded-3xl border border-slate-800/40 bg-slate-900/30 p-6">
             <h3 className="text-sm font-bold text-white mb-4">Seller Profile</h3>
-            <p className="text-xs text-slate-400 mb-4">{sellerBio || 'No bio configured.'}</p>
+            <p className="text-xs text-slate-400 mb-4">{bio || 'No bio configured.'}</p>
             <div className="flex flex-col gap-2">
               <button onClick={() => router.push('/seller/list-new')} className="rounded-xl inline-flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 py-2 text-sm font-bold">
                 <Plus className="h-4 w-4" />

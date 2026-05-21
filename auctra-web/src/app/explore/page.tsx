@@ -1,17 +1,50 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useRequireAuth from '../../hooks/useRequireAuth';
 import LayoutWrapper from '../../components/LayoutWrapper';
 import AuctionCard from '../../components/AuctionCard';
-import { useAuctions } from '../../hooks/useAuctions';
+import { supabase } from '@/server/supabase';
+import { Auction } from '../../types';
 
 type FilterType = 'all' | 'active' | 'upcoming' | 'high-value';
 
 export default function ExplorePage() {
   useRequireAuth();
-  const { auctions } = useAuctions();
+  const [auctions, setAuctions] = useState<Auction[]>([]);
+  const [loading, setLoading] = useState(true);
   const [activeFilter, setActiveFilter] = useState<FilterType>('all');
+
+  useEffect(() => {
+    const fetchLiveAuctions = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('auctions')
+        .select(`*, profiles(username, avatar_url)`)
+        .order('ends_at', { ascending: true });
+        
+      if (!error && data) {
+        const mapped: Auction[] = data.map((row: any) => ({
+          id: row.id,
+          title: row.title,
+          description: row.description,
+          image: row.image_url,
+          currentBid: Number(row.current_price),
+          minBidIncrement: Number(row.minimum_bid_increment),
+          highestBidder: row.highest_bidder,
+          endsAt: row.ends_at,
+          xpReward: row.xp_reward,
+          status: row.auction_status,
+          creator: row.profiles?.username || 'Unknown',
+          bidsCount: row.total_bids || 0
+        }));
+        setAuctions(mapped);
+      }
+      setLoading(false);
+    };
+    
+    fetchLiveAuctions();
+  }, []);
 
   const filteredAuctions = auctions.filter((auction) => {
     if (activeFilter === 'all') return true;
@@ -59,7 +92,12 @@ export default function ExplorePage() {
         </div>
 
         {/* Product Grid */}
-        {filteredAuctions.length === 0 ? (
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <div className="h-8 w-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
+            <p className="text-slate-500 text-sm mt-4">Loading live network auctions...</p>
+          </div>
+        ) : filteredAuctions.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <p className="text-slate-500 text-sm">No live auctions match this filter.</p>
           </div>

@@ -2,19 +2,17 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAppStore } from '../store/useAppStore';
+import { usePrivy } from '@privy-io/react-auth';
 
 export default function useRequireAuth() {
-  const isConnected = useAppStore((s) => s.isConnected);
-  const openAuth = useAppStore((s) => s.openAuthModal);
+  const { authenticated, ready } = usePrivy();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isConnected) {
-      openAuth('Sign in to continue');
+    if (ready && !authenticated) {
       router.push('/');
     }
-  }, [isConnected, openAuth, router]);
+  }, [ready, authenticated, router]);
 
-  return isConnected;
+  return ready && authenticated;
 }

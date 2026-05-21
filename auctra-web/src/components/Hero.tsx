@@ -3,10 +3,12 @@
 import { motion } from 'framer-motion';
 import { Gem, ArrowRight } from 'lucide-react';
 
-import { useAppStore } from '../store/useAppStore';
+import { usePrivy } from '@privy-io/react-auth';
+import { useRouter } from 'next/navigation';
 
 export default function Hero() {
-  const openAuth = useAppStore((s) => s.openAuthModal);
+  const { login, authenticated } = usePrivy();
+  const router = useRouter();
 
   return (
     <section className="relative overflow-hidden">
@@ -16,8 +18,18 @@ export default function Hero() {
           <p className="mt-4 text-slate-300 max-w-xl">Buy, sell, and claim verified NFTs in cinematic auctions. Secure on-chain settlements, reputation tracking, and premium seller verification.</p>
 
           <div className="mt-8 flex gap-4">
-            <button onClick={() => openAuth('Sign in to continue', '/explore')} className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-lg">Explore Auctions</button>
-            <button onClick={() => openAuth('Sign in to continue', '/seller-onboarding')} className="rounded-xl border border-slate-800 px-6 py-3 text-sm font-semibold text-slate-200 hover:bg-white/5">Become Seller</button>
+            <button 
+              onClick={() => authenticated ? router.push('/explore') : login()} 
+              className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-lg cursor-pointer transition-transform active:scale-95"
+            >
+              Explore Auctions
+            </button>
+            <button 
+              onClick={() => authenticated ? router.push('/seller-onboarding') : login()} 
+              className="rounded-xl border border-slate-800 px-6 py-3 text-sm font-semibold text-slate-200 hover:bg-white/5 cursor-pointer transition-transform active:scale-95"
+            >
+              Become Seller
+            </button>
           </div>
 
           <div className="mt-8 flex gap-6">

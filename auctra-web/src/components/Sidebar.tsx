@@ -14,13 +14,13 @@ import {
   ShieldCheck
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { useSeller } from '../hooks/useSeller';
+import { useProfile } from '../hooks/useProfile';
 
 export default function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { isConnected, connectWallet } = useAuth();
-  const { isSeller } = useSeller();
+  const { isVerifiedSeller } = useProfile();
 
   const navItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -31,7 +31,7 @@ export default function Sidebar() {
   ];
 
   // Extend nav for sellers
-  if (isSeller) {
+  if (isVerifiedSeller) {
     navItems.splice(1, 0, { name: 'Seller Dashboard', href: '/seller/dashboard', icon: ShieldCheck });
   }
 
@@ -108,13 +108,13 @@ export default function Sidebar() {
             <Wallet className="h-4 w-4" />
             Connect Wallet
           </motion.button>
-        ) : isSeller ? (
+        ) : isVerifiedSeller ? (
           <Link
-            href="/dashboard"
+            href="/seller/list-new"
             className="flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-950/20 py-3.5 font-semibold text-sm hover:bg-indigo-950/40 text-indigo-400 transition-all duration-200"
           >
             <ShieldCheck className="h-4 w-4 text-indigo-400 animate-pulse" />
-            Elite Seller Verified
+            Create Auction
           </Link>
         ) : (
           <motion.button
