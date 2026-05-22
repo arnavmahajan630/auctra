@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Gem, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { LogOut, ChevronDown, Gem } from 'lucide-react';
 import { usePrivy } from '@privy-io/react-auth';
 import { useProfile } from '../hooks/useProfile';
 import { useState } from 'react';
@@ -12,41 +12,29 @@ export default function Navbar() {
   const { name, avatar, isVerifiedSeller, isConnected } = useProfile();
   const [dropdownOpen, setDropdownOpen] = useState(false);
 
-  console.log("Navbar Render - isVerifiedSeller:", isVerifiedSeller, "isConnected:", isConnected, "name:", name);
-
   return (
     <motion.header initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full py-6">
       <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+        {/* Logo */}
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 shadow-lg">
-            <Gem className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <div className="text-white font-bold text-lg tracking-tight">Oktra</div>
-            <div className="text-xs text-indigo-300 -mt-0.5">Premium Web3 Auctions</div>
-          </div>
+          <div className="text-white font-bold text-xl tracking-tight">Oktra</div>
         </div>
 
-        <nav className="hidden md:flex gap-8 items-center text-sm text-slate-300">
-          <Link href="/explore" className="hover:text-white cursor-pointer">Explore</Link>
-          <Link href="/explore" className="hover:text-white cursor-pointer">Auctions</Link>
-          <Link href="/leaderboard" className="hover:text-white cursor-pointer">Leaderboard</Link>
-          <Link href="/profile" className="hover:text-white cursor-pointer">Rewards</Link>
-          {authenticated && isConnected && (
-            isVerifiedSeller ? (
-              <Link href="/seller/dashboard" className="hover:text-indigo-400 font-semibold cursor-pointer transition-colors">Seller Dashboard</Link>
-            ) : (
-              <Link href="/seller-onboarding" className="hover:text-indigo-400 font-semibold cursor-pointer transition-colors">Become a Seller</Link>
-            )
-          )}
+        {/* Links */}
+        <nav className="hidden md:flex gap-8 items-center text-sm font-medium text-slate-400">
+          <Link href="#how-it-works" className="hover:text-white transition-colors cursor-pointer">How it Works</Link>
+          <Link href="#features" className="hover:text-white transition-colors cursor-pointer">Features</Link>
+          <Link href="#treasury" className="hover:text-white transition-colors cursor-pointer">Treasury</Link>
+          <Link href="#faq" className="hover:text-white transition-colors cursor-pointer">FAQ</Link>
         </nav>
 
+        {/* Auth / Actions */}
         <div className="flex items-center gap-3 relative">
           {(authenticated && isConnected) ? (
             <div className="relative">
               <button 
                 onClick={() => setDropdownOpen(!dropdownOpen)}
-                className="flex items-center gap-3 rounded-full border border-slate-800 bg-slate-900/50 p-1 pr-4 transition-all hover:bg-slate-800/50"
+                className="flex items-center gap-3 rounded-full border border-slate-800 bg-slate-900/50 p-1 pr-4 transition-all hover:bg-slate-800/80"
               >
                 <img 
                   src={avatar || 'https://api.dicebear.com/7.x/avataaars/svg?seed=fallback'} 
@@ -58,7 +46,7 @@ export default function Navbar() {
               </button>
 
               {dropdownOpen && (
-                <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-800 bg-slate-900 p-2 shadow-2xl z-50">
+                <div className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-800 bg-[#05050a] p-2 shadow-2xl z-50">
                   <div className="px-3 py-2 border-b border-slate-800 mb-2">
                     <p className="text-xs text-slate-400">Signed in as</p>
                     <p className="text-sm font-bold text-white truncate">{name}</p>
@@ -87,21 +75,12 @@ export default function Navbar() {
               )}
             </div>
           ) : (
-            <>
-              <button
-                onClick={login}
-                className="hidden sm:inline-flex items-center gap-2 rounded-xl border border-slate-800/40 bg-white/5 px-4 py-2 text-sm text-slate-200 hover:bg-white/10"
-              >
-                Sign In
-              </button>
-
-              <button
-                onClick={login}
-                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_6px_30px_rgba(99,102,241,0.12)] hover:from-indigo-500 hover:to-violet-500 transition-all"
-              >
-                Connect Wallet
-              </button>
-            </>
+            <button
+              onClick={login}
+              className="inline-flex items-center gap-2 rounded-xl bg-slate-900/50 border border-slate-800 px-5 py-2 text-sm font-medium text-slate-200 hover:bg-slate-800/80 transition-all hover:text-white hover:border-slate-700 shadow-sm"
+            >
+              Connect Wallet
+            </button>
           )}
 
           <button

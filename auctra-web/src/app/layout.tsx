@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import LoaderScreen from '../components/LoaderScreen';
 import Providers from '../components/Providers';
 
 const geistSans = Geist({
@@ -31,7 +30,6 @@ export default function RootLayout({
     >
       <body className="h-full bg-[#060911] text-white">
         <Providers>
-          <LoaderScreen />
           {children}
         </Providers>
       </body>

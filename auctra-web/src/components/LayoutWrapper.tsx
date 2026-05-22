@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import PageTransition from './PageTransition';
@@ -10,6 +10,7 @@ import { usePathname } from 'next/navigation';
 export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   // Elite Mouse-Follow Spotlight Glow effect (GPU accelerated CSS variables)
   useEffect(() => {
@@ -59,10 +60,10 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
       />
 
       {/* Sidebar - fixed on left */}
-      <Sidebar />
+      <Sidebar isCollapsed={isCollapsed} setIsCollapsed={setIsCollapsed} />
 
       {/* Main Content Area - shifted right by sidebar width */}
-      <div className="pl-72 flex flex-col min-h-screen">
+      <div className={`${isCollapsed ? 'pl-20' : 'pl-72'} transition-[padding] duration-300 ease-in-out flex flex-col min-h-screen`}>
         {/* Persistent Top Bar Header */}
         <TopBar />
 

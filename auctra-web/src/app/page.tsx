@@ -4,12 +4,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePrivy } from '@privy-io/react-auth';
 import { supabase } from '../server/supabase';
+
 import Navbar from '../components/Navbar';
 import Hero from '../components/Hero';
-import LiveAuctionsPreview from '../components/LiveAuctionsPreview';
-import FeaturesGrid from '../components/FeaturesGrid';
-import HowItWorks from '../components/HowItWorks';
-import StatsProof from '../components/StatsProof';
+import TheMechanics from '../components/TheMechanics';
+import TechnicalSuperiority from '../components/TechnicalSuperiority';
+import CallToAction from '../components/CallToAction';
+import Footer from '../components/Footer';
 
 export default function Home() {
   const router = useRouter();
@@ -42,15 +43,13 @@ export default function Home() {
   }, [ready, authenticated, user, router]);
 
   return (
-    <main className="min-h-screen bg-[linear-gradient(180deg,#051424, #071026)]">
-  <Navbar />
-
-  <Hero />
-
-      <LiveAuctionsPreview />
-      <FeaturesGrid />
-      <HowItWorks />
-      <StatsProof />
+    <main className="min-h-screen flex flex-col bg-[#04050a] text-white selection:bg-indigo-500/30">
+      <Navbar />
+      <Hero />
+      <TheMechanics />
+      <TechnicalSuperiority />
+      <CallToAction />
+      <Footer />
     </main>
   );
 }

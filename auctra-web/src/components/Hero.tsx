@@ -1,8 +1,6 @@
 "use client";
 
 import { motion } from 'framer-motion';
-import { Gem, ArrowRight } from 'lucide-react';
-
 import { usePrivy } from '@privy-io/react-auth';
 import { useRouter } from 'next/navigation';
 
@@ -11,60 +9,49 @@ export default function Hero() {
   const router = useRouter();
 
   return (
-    <section className="relative overflow-hidden">
-      <div className="max-w-7xl mx-auto px-6 py-20 flex flex-col-reverse lg:flex-row items-center gap-12">
-        <div className="flex-1">
-          <h1 className="text-5xl md:text-6xl font-extrabold text-white leading-tight">Oktra — The Premier Web3 Auction Stage for Elite Collectors</h1>
-          <p className="mt-4 text-slate-300 max-w-xl">Buy, sell, and claim verified NFTs in cinematic auctions. Secure on-chain settlements, reputation tracking, and premium seller verification.</p>
+    <section className="relative overflow-hidden pt-24 pb-32">
+      <div className="max-w-4xl mx-auto px-6 flex flex-col items-center justify-center text-center">
+        {/* Text and Buttons */}
+        <motion.h1 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-[3.5rem] md:text-[5rem] font-bold leading-[1.1] tracking-tight text-white mb-6"
+        >
+          The Elite Layer for <br />
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-indigo-300 drop-shadow-[0_0_15px_rgba(129,140,248,0.5)]">
+            Decentralized Auctions.
+          </span>
+        </motion.h1>
+        
+        <motion.p 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="text-lg md:text-xl text-slate-300 mb-10 leading-relaxed max-w-2xl"
+        >
+          Experience a premium bidding network with zero-friction onboarding, passive AI fraud guardrails, and instant non-custodial payouts.
+        </motion.p>
 
-          <div className="mt-8 flex gap-4">
-            <button 
-              onClick={() => authenticated ? router.push('/explore') : login()} 
-              className="rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-6 py-3 text-sm font-semibold text-white shadow-lg cursor-pointer transition-transform active:scale-95"
-            >
-              Explore Auctions
-            </button>
-            <button 
-              onClick={() => authenticated ? router.push('/seller-onboarding') : login()} 
-              className="rounded-xl border border-slate-800 px-6 py-3 text-sm font-semibold text-slate-200 hover:bg-white/5 cursor-pointer transition-transform active:scale-95"
-            >
-              Become Seller
-            </button>
-          </div>
-
-          <div className="mt-8 flex gap-6">
-            <div className="text-xs text-slate-400">
-              <div className="font-bold text-white">Live now</div>
-              <div>Premium auctions starting every hour</div>
-            </div>
-
-            <div className="text-xs text-slate-400">
-              <div className="font-bold text-white">Secure</div>
-              <div>On-chain settlement & verified badges</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex-1 flex items-center justify-center relative">
-          <motion.div initial={{ rotate: -6 }} animate={{ rotate: 0 }} transition={{ duration: 1 }} className="w-[360px] h-[420px] rounded-3xl bg-gradient-to-br from-slate-900/60 to-[#071026]/60 border border-slate-800 p-4 shadow-2xl">
-            <div className="h-full w-full rounded-2xl bg-gradient-to-tr from-indigo-900/10 to-transparent p-3">
-              <div className="h-full w-full bg-[url('/images/obsidian_watch.png')] bg-cover bg-center rounded-2xl shadow-inner" />
-            </div>
-          </motion.div>
-
-          {/* Floating previews */}
-          <motion.div initial={{ x: 40, y: -40 }} animate={{ x: 0, y: 0 }} transition={{ delay: 0.2 }} className="absolute -right-20 -top-8 w-44 h-28 rounded-2xl bg-gradient-to-tr from-violet-700 to-indigo-500 p-2 shadow-lg border border-indigo-400/20">
-            <div className="h-full w-full bg-[url('/images/nebula_core.png')] bg-cover bg-center rounded-lg" />
-          </motion.div>
-
-          <motion.div initial={{ x: -40, y: 40 }} animate={{ x: 0, y: 0 }} transition={{ delay: 0.4 }} className="absolute -left-10 -bottom-6 w-36 h-24 rounded-2xl bg-gradient-to-tr from-teal-600 to-blue-500 p-2 shadow-lg border border-teal-300/20">
-            <div className="h-full w-full bg-[url('/images/quantum_ring.png')] bg-cover bg-center rounded-lg" />
-          </motion.div>
-        </div>
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="flex flex-wrap justify-center gap-4"
+        >
+          <button 
+            onClick={() => authenticated ? router.push('/explore') : login()} 
+            className="rounded-xl bg-gradient-to-r from-[#4f70f6] to-[#0fd2ff] px-8 py-3.5 text-sm font-bold text-white shadow-[0_0_20px_rgba(79,112,246,0.4)] hover:shadow-[0_0_30px_rgba(79,112,246,0.6)] transition-all active:scale-95"
+          >
+            Start Bidding
+          </button>
+          <button 
+            onClick={() => router.push('#how-it-works')} 
+            className="rounded-xl border border-slate-800 bg-transparent px-8 py-3.5 text-sm font-semibold text-slate-200 hover:bg-slate-800/50 hover:border-slate-700 transition-all active:scale-95"
+          >
+            Learn Mechanics
+          </button>
+        </motion.div>
       </div>
-
-      {/* subtle gradient glow */}
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-56 bg-gradient-to-t from-[#04050a] via-transparent to-transparent opacity-80" />
     </section>
   );
 }
