@@ -48,6 +48,13 @@ interface AppState {
   pendingAuthRedirect: string | null;
   openAuthModal: (message?: string, redirect?: string) => void;
   closeAuthModal: () => void;
+
+  // Sidebar & Mobile Navigation UI
+  sidebarCollapsed: boolean;
+  mobileMenuOpen: boolean;
+  toggleSidebar: () => void;
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  toggleMobileMenu: (open?: boolean) => void;
 }
 
 const INITIAL_AUCTIONS: Auction[] = [
@@ -254,6 +261,21 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   closeAuthModal: () => {
     set({ authModalOpen: false, authModalMessage: null, pendingAuthRedirect: null });
+  },
+
+  // Sidebar & Mobile Navigation UI
+  sidebarCollapsed: false,
+  mobileMenuOpen: false,
+  toggleSidebar: () => {
+    const nextCollapsed = !get().sidebarCollapsed;
+    localStorage.setItem('oktra_sidebar_collapsed', String(nextCollapsed));
+    set({ sidebarCollapsed: nextCollapsed });
+  },
+  setSidebarCollapsed: (collapsed: boolean) => {
+    set({ sidebarCollapsed: collapsed });
+  },
+  toggleMobileMenu: (open) => {
+    set({ mobileMenuOpen: open !== undefined ? open : !get().mobileMenuOpen });
   },
 
 

@@ -1,12 +1,14 @@
 'use client';
 
-import { Search, HelpCircle, Bell, Wallet, LogOut } from 'lucide-react';
+import { Search, HelpCircle, Bell, Wallet, LogOut, Menu } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useCollectibles } from '../hooks/useCollectibles';
+import { useAppStore } from '../store/useAppStore';
 
 export default function TopBar() {
   const { isConnected, walletAddress, connectWallet, disconnectWallet } = useAuth();
   const { reputationXP } = useCollectibles();
+  const toggleMobileMenu = useAppStore((s) => s.toggleMobileMenu);
 
   const formatAddress = (addr: string | null) => {
     if (!addr) return '';
@@ -14,17 +16,27 @@ export default function TopBar() {
   };
 
   return (
-    <header className="sticky top-0 z-10 flex h-20 w-full items-center justify-between border-b border-slate-800/20 bg-[#060A13]/85 backdrop-blur-md px-8 text-white">
-      {/* Search Input Box */}
-      <div className="relative w-96 max-w-md">
-        <span className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-          <Search className="h-4 w-4 text-slate-400" />
-        </span>
-        <input
-          type="text"
-          placeholder="Search artifacts, wallets, or events..."
-          className="w-full rounded-full border border-slate-800/50 bg-slate-950/40 py-2.5 pl-11 pr-4 text-sm text-slate-200 placeholder-slate-500 outline-none transition-all duration-200 focus:border-indigo-500/60 focus:bg-slate-950/80 focus:ring-1 focus:ring-indigo-500/40"
-        />
+    <header className="sticky top-0 z-10 flex h-20 w-full items-center justify-between border-b border-slate-800/20 bg-[#060A13]/85 backdrop-blur-md px-4 sm:px-8 text-white">
+      {/* Left side: Hamburger menu for mobile & Search Input Box */}
+      <div className="flex items-center gap-4 flex-1">
+        <button
+          onClick={() => toggleMobileMenu()}
+          className="lg:hidden flex items-center justify-center p-2 rounded-xl border border-slate-800 bg-slate-900/50 hover:bg-slate-900 hover:border-slate-700 text-slate-300 hover:text-white transition-all cursor-pointer"
+          title="Open Menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+
+        <div className="relative w-96 max-w-md hidden sm:block">
+          <span className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
+            <Search className="h-4 w-4 text-slate-400" />
+          </span>
+          <input
+            type="text"
+            placeholder="Search artifacts, wallets, or events..."
+            className="w-full rounded-full border border-slate-800/50 bg-slate-950/40 py-2.5 pl-11 pr-4 text-sm text-slate-200 placeholder-slate-500 outline-none transition-all duration-200 focus:border-indigo-500/60 focus:bg-slate-950/80 focus:ring-1 focus:ring-indigo-500/40"
+          />
+        </div>
       </div>
 
       {/* Right Header Navigation */}

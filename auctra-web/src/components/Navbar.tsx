@@ -1,53 +1,76 @@
 "use client";
 
-import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Gem } from 'lucide-react';
 import { useAppStore } from '../store/useAppStore';
 
 export default function Navbar() {
   const openAuth = useAppStore((s) => s.openAuthModal);
+  const isConnected = useAppStore((s) => s.isConnected);
+  const walletAddress = useAppStore((s) => s.walletAddress);
+
+  const scrollToSection = (id: string) => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
 
   return (
-    <motion.header initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="w-full py-6">
-      <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-500 shadow-lg">
-            <Gem className="h-5 w-5 text-white" />
-          </div>
-          <div>
-            <div className="text-white font-bold text-lg tracking-tight">Oktra</div>
-            <div className="text-xs text-indigo-300 -mt-0.5">Premium Web3 Auctions</div>
-          </div>
+    <motion.header
+      initial={{ y: -20, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.5, ease: 'easeOut' }}
+      className="sticky top-0 z-50 w-full border-b border-slate-900/60 bg-slate-950/45 backdrop-blur-md"
+    >
+      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        {/* LEFT: Logo */}
+        <div className="flex items-center gap-2 cursor-pointer group" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+          <span className="text-xl font-bold tracking-tight text-white select-none group-hover:text-indigo-400 transition-colors duration-300">Oktra</span>
         </div>
 
-        <nav className="hidden md:flex gap-8 items-center text-sm text-slate-300">
-          <a onClick={() => openAuth('Sign in to continue', '/explore')} className="hover:text-white cursor-pointer">Explore</a>
-          <a onClick={() => openAuth('Sign in to continue', '/explore')} className="hover:text-white cursor-pointer">Auctions</a>
-          <a onClick={() => openAuth('Sign in to continue', '/leaderboard')} className="hover:text-white cursor-pointer">Leaderboard</a>
-          <a onClick={() => openAuth('Sign in to continue', '/profile')} className="hover:text-white cursor-pointer">Rewards</a>
+        {/* CENTER: Links with interactive hover underscores */}
+        <nav className="hidden md:flex items-center gap-8">
+          <button
+            onClick={() => scrollToSection('the-mechanics')}
+            className="relative py-1 text-sm font-medium text-slate-400 hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none group"
+          >
+            How it Works
+            <span className="absolute bottom-0 left-0 w-full h-[1.5px] bg-indigo-500 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
+          </button>
+          <button
+            onClick={() => scrollToSection('technical-superiority')}
+            className="relative py-1 text-sm font-medium text-slate-400 hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none group"
+          >
+            Features
+            <span className="absolute bottom-0 left-0 w-full h-[1.5px] bg-indigo-500 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
+          </button>
+          <button
+            onClick={() => scrollToSection('technical-superiority')}
+            className="relative py-1 text-sm font-medium text-slate-400 hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none group"
+          >
+            Treasury
+            <span className="absolute bottom-0 left-0 w-full h-[1.5px] bg-indigo-500 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
+          </button>
+          <button
+            onClick={() => scrollToSection('cta-banner')}
+            className="relative py-1 text-sm font-medium text-slate-400 hover:text-white transition-colors duration-200 cursor-pointer bg-transparent border-none group"
+          >
+            FAQ
+            <span className="absolute bottom-0 left-0 w-full h-[1.5px] bg-indigo-500 scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
+          </button>
         </nav>
 
-        <div className="flex items-center gap-3">
+        {/* RIGHT: Connect Wallet */}
+        <div className="flex items-center gap-4">
           <button
-            onClick={() => openAuth('Sign in to continue')}
-            className="hidden sm:inline-flex items-center gap-2 rounded-xl border border-slate-800/40 bg-white/5 px-4 py-2 text-sm text-slate-200 hover:bg-white/10"
+            onClick={() => openAuth(isConnected ? 'Manage your connected wallet' : 'Connect your Web3 wallet to begin')}
+            className="relative px-5 py-2 rounded-lg text-xs font-semibold text-white bg-slate-900 border border-slate-800 hover:border-indigo-500/40 hover:bg-[#111827] shadow-[0_0_15px_rgba(99,102,241,0.05)] hover:shadow-[0_0_20px_rgba(99,102,241,0.2)] transition-all duration-300 active:scale-95 cursor-pointer"
           >
-            Sign In
-          </button>
-
-          <button
-            onClick={() => openAuth('Sign in to continue')}
-            className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_6px_30px_rgba(99,102,241,0.12)]"
-          >
-            Connect Wallet
-          </button>
-
-          <button
-            className="ml-2 text-slate-400 md:hidden"
-            aria-label="menu"
-          >
-            ☰
+            {isConnected && walletAddress ? (
+              <span className="font-mono text-indigo-300">{walletAddress}</span>
+            ) : (
+              'Connect Wallet'
+            )}
           </button>
         </div>
       </div>

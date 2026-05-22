@@ -5,9 +5,23 @@ import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import PageTransition from './PageTransition';
 import { AnimatePresence } from 'framer-motion';
+import { useAppStore } from '../store/useAppStore';
 
 export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  const sidebarCollapsed = useAppStore((s) => s.sidebarCollapsed);
+  const mobileMenuOpen = useAppStore((s) => s.mobileMenuOpen);
+  const setSidebarCollapsed = useAppStore((s) => s.setSidebarCollapsed);
+  const toggleMobileMenu = useAppStore((s) => s.toggleMobileMenu);
+
+  // Load sidebarCollapsed on mount to avoid Next SSR hydration difference
+  useEffect(() => {
+    const saved = localStorage.getItem('oktra_sidebar_collapsed');
+    if (saved === 'true') {
+      setSidebarCollapsed(true);
+    }
+  }, [setSidebarCollapsed]);
 
   // Elite Mouse-Follow Spotlight Glow effect (GPU accelerated CSS variables)
   useEffect(() => {
@@ -56,16 +70,28 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
         }}
       />
 
-      {/* Sidebar - fixed on left */}
+      {/* Mobile Drawer Backdrop overlay with smooth backdrop blur */}
+      <div 
+        className={`fixed inset-0 z-30 bg-slate-950/60 backdrop-blur-sm lg:hidden transition-opacity duration-300 ${
+          mobileMenuOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'
+        }`}
+        onClick={() => toggleMobileMenu(false)}
+      />
+
+      {/* Sidebar - fixed on left, collapsible and responsive */}
       <Sidebar />
 
-      {/* Main Content Area - shifted right by sidebar width */}
-      <div className="pl-72 flex flex-col min-h-screen">
+      {/* Main Content Area - shifted right by sidebar width on desktop */}
+      <div 
+        className={`flex flex-col min-h-screen transition-all duration-300 ease-out pl-0 ${
+          sidebarCollapsed ? 'lg:pl-20' : 'lg:pl-72'
+        }`}
+      >
         {/* Persistent Top Bar Header */}
         <TopBar />
 
         {/* Inner Page Main Contents with Staggered Transition wrapper */}
-        <main className="flex-1 px-10 py-8 overflow-y-auto">
+        <main className="flex-1 px-4 sm:px-10 py-8 overflow-y-auto">
           <AnimatePresence mode="wait">
             <PageTransition>
               {children}
