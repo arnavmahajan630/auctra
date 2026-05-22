@@ -29,7 +29,7 @@ Hybrid auction: bidding lives off-chain; chain handles only **settlement + proof
 
 - **`MockUSD`** — 6-decimal ERC-20, open faucet. Settlement currency on testnet.
 - **`AchievementBadge`** — soulbound ERC-721 (transfers blocked in `_update`; mint/burn allowed). `setMinter` is one-shot and gates `mint()` to the settlement contract only. `tokenURI` returns on-chain base64-encoded JSON with auctionId / finalPrice / wonAt.
-- **`AuctionSettlement`** — the orchestrator. Owner (= backend admin) calls `configureAuction(id, seller, endTime)` which also fixes `claimDeadline = endTime + 24h`. The contract verifies backend ECDSA signatures and pulls USD from claimant → seller, then mints the badge.
+- **`AuctionSettlement`** — the orchestrator. Owner (= backend admin) calls `configureAuction(id, seller, endTime)` which also fixes `claimDeadline = endTime + 24h`. The backend verifies UGF payment receipts first; the contract then verifies backend ECDSA signatures, marks settlement final, and mints the badge.
 
 ### Signature scheme
 

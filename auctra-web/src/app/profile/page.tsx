@@ -9,11 +9,39 @@ import CollectibleCard from '../../components/CollectibleCard';
 import { useAuth } from '../../hooks/useAuth';
 import { useProfile } from '../../hooks/useProfile';
 import useRequireAuth from '../../hooks/useRequireAuth';
+import ClaimWinModal from '../../components/ClaimWinModal';
+import { Timer } from 'lucide-react';
+import { formatUsdAmount } from '@/lib/currency';
+import { usePrivy } from '@privy-io/react-auth';
 
 type TabType = 'collectibles' | 'active-bids' | 'transactions' | 'claim-rewards';
 
+function ClaimTimer({ endsAt }: { endsAt: string }) {
+  const [timeLeft, setTimeLeft] = useState('');
+  
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useState(() => {
+    const updateTimer = () => {
+      const deadline = new Date(endsAt).getTime() + 24 * 60 * 60 * 1000;
+      const now = Date.now();
+      const diff = deadline - now;
+      if (diff <= 0) return setTimeLeft('Expired');
+      const h = Math.floor(diff / (1000 * 60 * 60));
+      const m = Math.floor((diff / (1000 * 60)) % 60);
+      setTimeLeft(`${h}h ${m}m left`);
+    };
+    updateTimer();
+    const interval = setInterval(updateTimer, 60000);
+    return () => clearInterval(interval);
+  });
 
-import { usePrivy } from '@privy-io/react-auth';
+  return (
+    <div className="flex items-center gap-1 text-[10px] font-bold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full mt-1 w-fit">
+      <Timer className="h-3 w-3" />
+      {timeLeft}
+    </div>
+  );
+}
 
 export default function ProfilePage() {
   useRequireAuth();
@@ -47,8 +75,7 @@ export default function ProfilePage() {
   ];
 
   const wonAuctions = useAppStore((s) => s.wonAuctions);
-  const claimReward = useAppStore((s) => s.claimReward);
-  const [processingClaim, setProcessingClaim] = useState<string | null>(null);
+  const [selectedClaimAuction, setSelectedClaimAuction] = useState<any>(null);
 
   return (
     <LayoutWrapper>
@@ -228,7 +255,7 @@ export default function ProfilePage() {
                       <img src={item.image} alt={item.title} className="h-16 w-16 rounded-2xl object-cover border border-slate-900 flex-shrink-0" />
                       <div className="flex flex-col min-w-0">
                         <h4 className="text-sm font-bold text-white truncate">{item.title}</h4>
-                        <span className="text-[10px] text-slate-500 mt-1">Won for {item.wonPrice} ETH</span>
+                        <span className="text-[10px] text-slate-500 mt-1">Won for {formatUsdAmount(item.wonPrice)}</span>
                       </div>
                     </div>
 
@@ -236,17 +263,14 @@ export default function ProfilePage() {
                       <div className="flex flex-col">
                         <span className="text-[10px] text-slate-400 font-bold uppercase">Status</span>
                         <span className="text-base font-extrabold text-white mt-0.5">Unclaimed</span>
+                        {item.endsAt && <ClaimTimer endsAt={item.endsAt} />}
                       </div>
                       <div className="flex items-center gap-2">
                         <button
-                          onClick={async () => {
-                            setProcessingClaim(item.id);
-                            await claimReward(item.id);
-                            setProcessingClaim(null);
-                          }}
-                          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-xs font-bold text-white"
+                          onClick={() => setSelectedClaimAuction(item)}
+                          className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-2 text-xs font-bold text-white hover:from-indigo-500 hover:to-violet-500 transition-colors cursor-pointer"
                         >
-                          {processingClaim === item.id ? 'Processing...' : 'Pay & Claim'}
+                          Pay & Claim
                         </button>
                       </div>
                     </div>
@@ -287,7 +311,7 @@ export default function ProfilePage() {
                     <div className="flex items-center justify-between border-t border-slate-800/20 pt-4 text-xs">
                       <div className="flex flex-col">
                         <span className="text-[10px] text-slate-500 font-bold uppercase">Your Active Bid</span>
-                        <span className="text-base font-extrabold text-white mt-0.5">{auction.currentBid.toFixed(4)} ETH</span>
+                        <span className="text-base font-extrabold text-white mt-0.5">{formatUsdAmount(auction.currentBid)}</span>
                       </div>
                       <Link
                         href={`/explore/${auction.id}`}
@@ -356,6 +380,14 @@ export default function ProfilePage() {
           )}
         </div>
       )}
+
+      <ClaimWinModal 
+        isOpen={!!selectedClaimAuction} 
+        onClose={() => setSelectedClaimAuction(null)} 
+        auction={selectedClaimAuction}
+        walletAddress={walletAddress || '0xUnknown'}
+        onSuccess={() => window.location.reload()}
+      />
     </LayoutWrapper>
   );
 }

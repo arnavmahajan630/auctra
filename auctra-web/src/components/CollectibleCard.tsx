@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { Zap, CheckCircle2 } from 'lucide-react';
 import { Collectible } from '../types';
+import { formatUsdAmount } from '@/lib/currency';
 
 interface CollectibleCardProps {
   collectible: Collectible;
@@ -52,7 +53,7 @@ export default function CollectibleCard({ collectible, variant = 'standard' }: C
           <div className="flex items-center justify-between border-t border-slate-800/50 pt-5">
             <div className="flex flex-col gap-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Acquisition</span>
-              <span className="text-sm font-semibold text-slate-200">Won for {collectible.wonPrice.toFixed(4)} ETH</span>
+              <span className="text-sm font-semibold text-slate-200">Won for {formatUsdAmount(collectible.wonPrice)}</span>
             </div>
             <div className="flex flex-col items-end gap-1">
               <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Yield</span>
@@ -62,6 +63,13 @@ export default function CollectibleCard({ collectible, variant = 'standard' }: C
               </span>
             </div>
           </div>
+          
+          {collectible.prizeDetails && (
+            <div className="mt-4 p-3 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-sm">
+              <span className="block text-[10px] font-bold uppercase tracking-wider text-indigo-400 mb-1">Prize Details</span>
+              <p className="text-indigo-100 whitespace-pre-wrap">{collectible.prizeDetails}</p>
+            </div>
+          )}
         </div>
       </motion.div>
     );
@@ -106,13 +114,20 @@ export default function CollectibleCard({ collectible, variant = 'standard' }: C
 
         <div className="flex items-center justify-between border-t border-slate-800/30 pt-4">
           <span className="text-xs text-slate-400">
-            Won for <span className="font-semibold text-slate-200">{collectible.wonPrice.toFixed(4)} ETH</span>
+            Won for <span className="font-semibold text-slate-200">{formatUsdAmount(collectible.wonPrice)}</span>
           </span>
           <span className="flex items-center gap-1 text-xs font-bold text-teal-400">
             <Zap className="h-3 w-3 text-teal-400 animate-pulse" />
             +{collectible.xpReward} XP
           </span>
         </div>
+
+        {collectible.prizeDetails && (
+          <div className="mt-3 pt-3 border-t border-slate-800/30 text-xs">
+            <span className="block text-[9px] font-bold uppercase text-indigo-400 mb-0.5">Prize Details</span>
+            <p className="text-indigo-200 whitespace-pre-wrap line-clamp-2 hover:line-clamp-none transition-all">{collectible.prizeDetails}</p>
+          </div>
+        )}
       </div>
     </motion.div>
   );

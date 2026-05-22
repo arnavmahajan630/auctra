@@ -8,16 +8,14 @@ contract AuctionSettlementTest is BaseTest {
     function test_HappyPath_WinnerClaims() public {
         bytes memory sig = _sign(signerPk, settlement.WINNER_TAG(), AUCTION_ID, winner, PRICE);
 
-        uint256 sellerBefore = usd.balanceOf(seller);
         uint256 winnerBefore = usd.balanceOf(winner);
 
         vm.prank(winner);
         settlement.claim(AUCTION_ID, PRICE, sig);
 
-        uint256 fee = (PRICE * FEE_BPS) / 10_000;
-        assertEq(usd.balanceOf(seller), sellerBefore + PRICE - fee, "seller paid net of fee");
-        assertEq(usd.balanceOf(settlement.TREASURY()), fee, "treasury paid fee");
-        assertEq(usd.balanceOf(winner), winnerBefore - PRICE, "winner debited gross");
+        assertEq(usd.balanceOf(seller), 0, "seller payment happens through UGF before mint");
+        assertEq(usd.balanceOf(settlement.treasury()), 0, "treasury payment happens through UGF before mint");
+        assertEq(usd.balanceOf(winner), winnerBefore, "claim mint does not pull payment");
         assertEq(badge.ownerOf(1), winner, "badge minted to winner");
         (,,, bool settled,,) = settlement.auctions(AUCTION_ID);
         assertTrue(settled);

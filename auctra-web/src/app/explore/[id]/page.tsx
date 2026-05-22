@@ -8,6 +8,7 @@ import BiddingModal from '../../../components/BiddingModal';
 import { supabase } from '@/server/supabase';
 import { Auction } from '../../../types';
 import { useAuth } from '../../../hooks/useAuth';
+import { formatUsdAmount } from '@/lib/currency';
 
 export default function AuctionDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
@@ -190,14 +191,11 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
               <div className="flex flex-col gap-1 mb-8">
                 <div className="flex justify-between items-end">
                   <span className="text-xs text-slate-400">Current highest bid</span>
-                  <span className="text-xs text-slate-500">Starting at {auction.startingPrice.toFixed(4)} ETH</span>
+                  <span className="text-xs text-slate-500">Starting at {formatUsdAmount(auction.startingPrice)}</span>
                 </div>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-black text-white">{auction.currentBid.toFixed(4)}</span>
-                  <span className="text-lg font-bold text-slate-400">ETH</span>
-                  <span className="text-xs text-slate-500 ml-1">
-                    (~${(auction.currentBid * 3500).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USD)
-                  </span>
+                  <span className="text-4xl font-black text-white">{formatUsdAmount(auction.currentBid)}</span>
+                  <span className="text-xs text-slate-500 ml-1">Mock USD via UGF</span>
                 </div>
               </div>
 
@@ -253,7 +251,7 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
                           <span className="text-[10px] text-slate-500">{timeAgo(bid.created_at)}</span>
                         </div>
                       </div>
-                      <span className="text-xs font-bold text-white">{Number(bid.bid_amount).toFixed(4)} ETH</span>
+                      <span className="text-xs font-bold text-white">{formatUsdAmount(bid.bid_amount)}</span>
                     </div>
                   ))
                 )}

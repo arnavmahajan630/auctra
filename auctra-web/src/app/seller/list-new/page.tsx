@@ -16,13 +16,12 @@ export default function ListNewPage() {
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [prizeDetails, setPrizeDetails] = useState('');
   const [usdPrice, setUsdPrice] = useState('1750');
   const [durationDays, setDurationDays] = useState('2');
   const [durationHours, setDurationHours] = useState('0');
   const [durationMinutes, setDurationMinutes] = useState('0');
-  
-  const ETH_PRICE_USD = 3500;
-  const ethValue = usdPrice ? (parseFloat(usdPrice) / ETH_PRICE_USD) : 0;
+  const mockUsdValue = usdPrice ? parseFloat(usdPrice) : 0;
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -54,7 +53,8 @@ export default function ListNewPage() {
       const formData = new FormData();
       formData.append('title', title);
       formData.append('description', description);
-      formData.append('startingPrice', ethValue.toString());
+      if (prizeDetails) formData.append('prizeDetails', prizeDetails);
+      formData.append('startingPrice', mockUsdValue.toString());
       formData.append('durationHours', totalHours.toString());
       if (imageFile) formData.append('image', imageFile);
 
@@ -104,7 +104,11 @@ export default function ListNewPage() {
               <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white" />
 
               <label className="text-xs font-bold text-slate-400 uppercase">Description</label>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={5} className="w-full rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white resize-none" />
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={4} className="w-full rounded-2xl border border-slate-800 bg-slate-950/60 px-4 py-3 text-sm text-white resize-none" />
+
+              <label className="text-xs font-bold text-slate-400 uppercase">Prize Details (Hidden until claimed)</label>
+              <p className="text-[10px] text-slate-500 mb-1 -mt-3">Provide the digital code, link, or physical item instructions. Only the winner will see this after payment.</p>
+              <textarea value={prizeDetails} onChange={(e) => setPrizeDetails(e.target.value)} rows={2} className="w-full rounded-2xl border border-indigo-500/30 bg-indigo-500/5 px-4 py-3 text-sm text-indigo-100 placeholder-indigo-300/30 focus:border-indigo-500 focus:outline-none transition-all resize-none" placeholder="e.g. Download link: https://... or Secret Code: 12345" />
 
               <label className="text-xs font-bold text-slate-400 uppercase">Images</label>
               <div className="flex items-center gap-3">
@@ -120,12 +124,9 @@ export default function ListNewPage() {
                   <label className="text-xs font-bold text-slate-400 uppercase">Starting Bid (USD)</label>
                   <div className="relative mt-1">
                     <span className="absolute left-4 top-3.5 text-slate-400 font-bold">$</span>
-                    <input type="number" step="0.01" min="0" value={usdPrice} onChange={(e) => setUsdPrice(e.target.value)} className="w-full rounded-2xl border border-slate-800 bg-slate-950/60 pl-8 pr-4 py-3 text-sm text-white focus:border-indigo-500 focus:outline-none transition-all" />
+                    <input type="number" step="any" min="0" value={usdPrice} onChange={(e) => setUsdPrice(e.target.value)} className="w-full rounded-2xl border border-slate-800 bg-slate-950/60 pl-8 pr-4 py-3 text-sm text-white focus:border-indigo-500 focus:outline-none transition-all" />
                   </div>
-                  <div className="text-[11px] text-indigo-300/80 mt-2 font-mono flex items-center gap-1.5">
-                    <span>≈</span>
-                    <span>{ethValue > 0 ? ethValue.toFixed(6).replace(/\.?0+$/, '') : '0'} ETH</span>
-                  </div>
+                  <div className="text-[11px] text-indigo-300/80 mt-2 font-mono">Settled through UGF testnet Mock USD</div>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-400 uppercase mb-3 block">Duration</label>
@@ -160,7 +161,7 @@ export default function ListNewPage() {
                   <div className="text-xs text-slate-400">Creator • You</div>
                 </div>
                 <div className="text-right">
-                  <div className="text-sm font-extrabold text-white">{ethValue > 0 ? ethValue.toFixed(6).replace(/\.?0+$/, '') : '0'} ETH</div>
+                  <div className="text-sm font-extrabold text-white">${mockUsdValue > 0 ? mockUsdValue.toFixed(2) : '0.00'}</div>
                   <div className="text-xs text-slate-500">Reserve: --</div>
                 </div>
               </div>

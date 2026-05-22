@@ -4,23 +4,18 @@ pragma solidity ^0.8.24;
 import {BaseTest} from "./Base.t.sol";
 import {AuctionSettlement} from "../src/AuctionSettlement.sol";
 
-/// @notice ERC-2771 sanity: when the trusted forwarder calls the contract with the
-///         original user appended as the trailing 20 bytes, `_msgSender()` resolves
-///         to that user — so the winner's signed payload is honored.
+/// @notice UGF sponsors ETH for the user's own signer in the current SDK path,
+///         so the settlement contract intentionally uses msg.sender directly.
 contract MetaTxTest is BaseTest {
-    function test_ForwarderRelayedClaimResolvesUserAsSender() public {
+    function test_DirectSponsoredClaimUsesUserSigner() public {
         bytes memory sig = _sign(signerPk, settlement.WINNER_TAG(), AUCTION_ID, winner, PRICE);
-        bytes memory data = abi.encodeCall(AuctionSettlement.claim, (AUCTION_ID, PRICE, sig));
 
-        // Forwarder appends the original user address as the suffix.
-        vm.prank(trustedForwarder);
-        (bool ok,) = address(settlement).call(abi.encodePacked(data, winner));
-        assertTrue(ok, "forwarded claim should succeed");
+        vm.prank(winner);
+        settlement.claim(AUCTION_ID, PRICE, sig);
 
         assertEq(badge.ownerOf(1), winner);
-        uint256 fee = (PRICE * FEE_BPS) / 10_000;
-        assertEq(usd.balanceOf(seller), PRICE - fee);
-        assertEq(usd.balanceOf(settlement.TREASURY()), fee);
+        assertEq(usd.balanceOf(seller), 0);
+        assertEq(usd.balanceOf(settlement.treasury()), 0);
     }
 
     function test_NonForwarderRelayDoesNotSpoofSender() public {

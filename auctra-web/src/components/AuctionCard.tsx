@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Timer, ArrowUpRight } from 'lucide-react';
 import { Auction } from '../types';
+import { formatUsdAmount } from '@/lib/currency';
 
 export default function AuctionCard({ auction }: { auction: Auction }) {
   const [timeLeft, setTimeLeft] = useState('');
@@ -93,7 +94,7 @@ export default function AuctionCard({ auction }: { auction: Auction }) {
           <div className="flex flex-col">
             <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Current Bid</span>
             <span className="text-lg font-extrabold text-white">
-              {auction.currentBid.toFixed(4)} <span className="text-xs font-semibold text-slate-400">ETH</span>
+              {formatUsdAmount(auction.currentBid)}
             </span>
           </div>
 

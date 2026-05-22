@@ -31,6 +31,7 @@ export async function POST(req: Request) {
     const startingPrice = parseFloat(formData.get('startingPrice') as string);
     const minBidIncrement = parseFloat(formData.get('minBidIncrement') as string);
     const durationHours = parseFloat(formData.get('durationHours') as string);
+    const prizeDetails = formData.get('prizeDetails') as string;
     const image = formData.get('image') as File | null;
 
     if (!title || !description || isNaN(startingPrice) || isNaN(durationHours)) {
@@ -80,6 +81,7 @@ export async function POST(req: Request) {
         seller_id: profile.id,
         title,
         description,
+        prize_details: prizeDetails || null,
         image_url: imageUrl,
         starting_price: startingPrice,
         current_price: startingPrice,

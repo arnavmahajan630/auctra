@@ -6,6 +6,7 @@ import { X, Wallet, ShieldAlert, Sparkles, CheckCircle2 } from 'lucide-react';
 import { Auction } from '../types';
 import { useRouter } from 'next/navigation';
 import { useAuctions } from '../hooks/useAuctions';
+import { formatUsdAmount } from '@/lib/currency';
 
 interface BiddingModalProps {
   isOpen: boolean;
@@ -138,7 +139,7 @@ export default function BiddingModal({ isOpen, onClose, auction }: BiddingModalP
                     <span className="text-sm font-bold text-slate-200 truncate">{auction.title}</span>
                     <span className="text-xs text-slate-400 mt-0.5">
                       Current highest bid:{' '}
-                      <span className="font-semibold text-indigo-400">{auction.currentBid.toFixed(4)} ETH</span>
+                      <span className="font-semibold text-indigo-400">{formatUsdAmount(auction.currentBid)}</span>
                     </span>
                   </div>
                 </div>
@@ -146,12 +147,12 @@ export default function BiddingModal({ isOpen, onClose, auction }: BiddingModalP
                 {/* Bid Input */}
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">
-                    Your Bid Amount (ETH)
+                    Your Bid Amount (Mock USD)
                   </label>
                   <div className="relative">
                     <input
                       type="number"
-                      step="0.01"
+                      step="any"
                       min={minimumAllowedBid}
                       value={bidAmount}
                       onChange={(e) => setBidAmount(e.target.value)}
@@ -160,11 +161,11 @@ export default function BiddingModal({ isOpen, onClose, auction }: BiddingModalP
                       required
                     />
                     <span className="absolute inset-y-0 right-5 flex items-center text-sm font-extrabold text-slate-400">
-                      ETH
+                      $
                     </span>
                   </div>
                   <span className="text-[10px] text-slate-500">
-                    Minimum bid: <span className="font-semibold">{minimumAllowedBid.toFixed(4)} ETH</span>
+                    Minimum bid: <span className="font-semibold">{formatUsdAmount(minimumAllowedBid)}</span>
                   </span>
                 </div>
 
@@ -186,7 +187,7 @@ export default function BiddingModal({ isOpen, onClose, auction }: BiddingModalP
                     <Wallet className="h-4 w-4 text-indigo-400" />
                     0x8F3a2C...4D1A
                   </span>
-                  <span>Balance: <span className="font-semibold text-slate-200">18.45 ETH</span></span>
+                  <span>Payment rail: <span className="font-semibold text-slate-200">UGF Mock USD</span></span>
                 </div>
 
                 {/* Submit */}

@@ -6,8 +6,7 @@ import { Gem, Zap, Plus, ArrowUpRight } from 'lucide-react';
 import LayoutWrapper from '../../components/LayoutWrapper';
 import AuthGuard from '../../components/AuthGuard';
 import useRequireAuth from '../../hooks/useRequireAuth';
-import EmptyTrophyCase from '../../components/EmptyTrophyCase';
-import CollectibleCard from '../../components/CollectibleCard';
+import NFTBadgeCard from '../../components/NFTBadgeCard';
 import StatBadge from '../../components/StatBadge';
 import { useAuth } from '../../hooks/useAuth';
 import { useCollectibles } from '../../hooks/useCollectibles';
@@ -56,14 +55,14 @@ export default function DashboardPage() {
             {/* Left featured large card */}
             {featuredWatch && (
               <div className="lg:col-span-1">
-                <CollectibleCard collectible={featuredWatch} variant="large" />
+                <NFTBadgeCard collectible={featuredWatch} variant="large" />
               </div>
             )}
 
             {/* Right smaller cards */}
             <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
               {standardCollectibles.map((item) => (
-                <CollectibleCard key={item.id} collectible={item} variant="standard" />
+                <NFTBadgeCard key={item.id} collectible={item} variant="standard" />
               ))}
 
               {/* Acquire Next (Dotted Card) */}

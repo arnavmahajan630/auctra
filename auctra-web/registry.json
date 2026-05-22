@@ -1,0 +1,152 @@
+{
+  "payment_options": [
+    {
+      "token": "USDC",
+      "type": "x402",
+      "chain_type": "evm",
+      "receiver_address": "0xF9eA6CCf7e7AD134737821C1a918EA1cC4f2be1d",
+      "chains": [
+        {
+          "chain_id": "42161",
+          "chain_type": "evm",
+          "address": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831"
+        },
+        {
+          "chain_id": "8453",
+          "chain_type": "evm",
+          "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913"
+        },
+        {
+          "chain_id": "10",
+          "chain_type": "evm",
+          "address": "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85"
+        },
+        {
+          "chain_id": "137",
+          "chain_type": "evm",
+          "address": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359"
+        },
+        {
+          "chain_id": "43114",
+          "chain_type": "evm",
+          "address": "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E"
+        }
+      ]
+    },
+    {
+      "token": "EURC",
+      "type": "x402",
+      "chain_type": "evm",
+      "receiver_address": "0xF9eA6CCf7e7AD134737821C1a918EA1cC4f2be1d",
+      "chains": [
+        {
+          "chain_id": "8453",
+          "chain_type": "evm",
+          "address": "0x60a3E35Cc302bFA44Cb288Bc5a4F316Fdb1adb42"
+        },
+        {
+          "chain_id": "43114",
+          "chain_type": "evm",
+          "address": "0xC891EB4cbdEFf6e073e859e987815Ed1505c2ACD"
+        }
+      ]
+    },
+    {
+      "token": "$U",
+      "type": "x402",
+      "chain_type": "evm",
+      "receiver_address": "0xF9eA6CCf7e7AD134737821C1a918EA1cC4f2be1d",
+      "chains": [
+        {
+          "chain_id": "56",
+          "chain_type": "evm",
+          "address": "0xcE24439F2D9C6a2289F741120FE202248B666666"
+        }
+      ]
+    },
+    {
+      "token": "TYI_MOCK_USD",
+      "type": "x402",
+      "chain_type": "evm",
+      "receiver_address": "0xF9eA6CCf7e7AD134737821C1a918EA1cC4f2be1d",
+      "chains": [
+        {
+          "chain_id": "84532",
+          "chain_type": "evm",
+          "address": "0x27DC1C167AeF232bb1e21073304B526726a8727e"
+        }
+      ]
+    },
+    {
+      "token": "ETH",
+      "type": "native",
+      "chain_type": "evm",
+      "chains": [
+        {
+          "chain_id": "8453",
+          "chain_type": "evm",
+          "address": "native",
+          "vault_address": "0x709B6468d0480cD8C0Add45F3921a73b02277dB7"
+        },
+        {
+          "chain_id": "10",
+          "chain_type": "evm",
+          "address": "native",
+          "vault_address": "0x870B5ACbF4860f93aE9510148878D17bb4f25F65"
+        },
+        {
+          "chain_id": "42161",
+          "chain_type": "evm",
+          "address": "native",
+          "vault_address": "0x1d2Dc8289A0A28E9D4dF715F2CaFE5788D9322b4"
+        }
+      ]
+    },
+    {
+      "token": "MATIC",
+      "type": "native",
+      "chain_type": "evm",
+      "chains": [
+        {
+          "chain_id": "137",
+          "chain_type": "evm",
+          "address": "native",
+          "vault_address": "0x1d2Dc8289A0A28E9D4dF715F2CaFE5788D9322b4"
+        }
+      ]
+    },
+    {
+      "token": "AVAX",
+      "type": "native",
+      "chain_type": "evm",
+      "chains": [
+        {
+          "chain_id": "43114",
+          "chain_type": "evm",
+          "address": "native",
+          "vault_address": "0x87291a536b540779DEa394C3FEe1b931Af62AED6"
+        }
+      ]
+    },
+    {
+      "token": "BNB",
+      "type": "native",
+      "chain_type": "evm",
+      "chains": [
+        {
+          "chain_id": "56",
+          "chain_type": "evm",
+          "address": "native",
+          "vault_address": "0x32813C6dDA6535aa8Ee6BA8AfEF5F902Cb78bE54"
+        },
+        {
+          "chain_id": "204",
+          "chain_type": "evm",
+          "address": "native",
+          "vault_address": "0xF6137ceD2e00fA49A597273FB5Db9CA0fa4977cc"
+        }
+      ]
+    }
+  ],
+  "vault_abi": "[{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"digest\",\"type\":\"bytes32\"}],\"name\":\"payForFuel\",\"outputs\":[],\"stateMutability\":\"payable\",\"type\":\"function\"}]"
+}

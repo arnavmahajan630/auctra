@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { useAuctions } from '../hooks/useAuctions';
 import CollectibleCard from './CollectibleCard';
+import { formatUsdAmount } from '@/lib/currency';
 
 export default function LiveAuctionsPreview() {
   const { auctions } = useAuctions();
@@ -25,7 +26,7 @@ export default function LiveAuctionsPreview() {
                 <div className="text-xs text-slate-400">{a.bidsCount} bids</div>
               </div>
               <div className="mt-2 flex items-center justify-between">
-                <div className="text-sm text-indigo-300 font-semibold">{a.currentBid.toFixed(4)} ETH</div>
+                <div className="text-sm text-indigo-300 font-semibold">{formatUsdAmount(a.currentBid)}</div>
                 <div className="text-xs text-slate-400">Ends in {/* TODO: timer */}⏳</div>
               </div>
             </div>

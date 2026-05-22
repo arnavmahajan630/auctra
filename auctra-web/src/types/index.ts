@@ -37,8 +37,10 @@ export interface Collectible {
   image: string;
   wonPrice: number;
   xpReward: number;
+  prizeDetails?: string;
   mintedDate: string;
   txHash: string;
+  tokenId?: number;
 }
 
 export interface LeaderboardEntry {

@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { Auction, Collectible, LeaderboardEntry } from '../types';
 import { supabase } from '../server/supabase';
+import { formatUsdAmount } from '@/lib/currency';
 
 interface AppState {
   // Authentication / Wallet
@@ -277,7 +278,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     const auction = auctions[auctionIndex];
     if (amount <= auction.currentBid) {
-      return { success: false, error: `Bid must be higher than current bid: ${auction.currentBid} ETH` };
+      return { success: false, error: `Bid must be higher than current bid: ${formatUsdAmount(auction.currentBid)}` };
     }
 
     const updatedAuctions = [...auctions];
@@ -463,7 +464,7 @@ export const useAppStore = create<AppState>((set, get) => ({
           activityLogs.push({
             type: 'Bid Submitted',
             item: bid.auction?.title || 'Unknown Asset',
-            amount: `${Number(bid.bid_amount).toFixed(4)} ETH`,
+            amount: formatUsdAmount(bid.bid_amount),
             status: bid.is_winning_bid ? 'Winning' : 'Confirmed',
             txHash: bid.tx_hash ? `${bid.tx_hash.substring(0, 8)}...${bid.tx_hash.substring(bid.tx_hash.length - 4)}` : '0xUnknown',
             date: new Date(bid.created_at).toLocaleDateString() + ' ' + new Date(bid.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
@@ -476,15 +477,43 @@ export const useAppStore = create<AppState>((set, get) => ({
           activityLogs.push({
             type: 'Artifact Won & Claimed',
             item: claim.auction?.title || 'Unknown Asset',
-            amount: `${Number(claim.amount_paid).toFixed(4)} ETH`,
+            amount: formatUsdAmount(claim.amount_paid),
             status: 'Minted',
-            txHash: claim.payment_tx_hash ? `${claim.payment_tx_hash.substring(0, 8)}...${claim.payment_tx_hash.substring(claim.payment_tx_hash.length - 4)}` : '0xUnknown',
+            txHash: claim.claim_tx_hash ? `${claim.claim_tx_hash.substring(0, 8)}...${claim.claim_tx_hash.substring(claim.claim_tx_hash.length - 4)}` : '0xUnknown',
             date: new Date(claim.claimed_at || claim.created_at).toLocaleDateString() + ' ' + new Date(claim.claimed_at || claim.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             rawDate: new Date(claim.claimed_at || claim.created_at)
           });
         });
       }
       activityLogs.sort((a, b) => b.rawDate.getTime() - a.rawDate.getTime());
+
+      // 6. Fetch won auctions (pending claim)
+      const { data: wonAuctionsData, error: wonAuctionsError } = await supabase
+        .from('auctions')
+        .select('*, claims(*)')
+        .eq('highest_bidder', profileId)
+        .lte('ends_at', new Date().toISOString());
+
+      if (wonAuctionsError) throw wonAuctionsError;
+
+      const wonAuctionsList = (wonAuctionsData || [])
+        .filter(auction => {
+           const raw = auction.claims;
+           const claimsArr: any[] = Array.isArray(raw) ? raw : raw ? [raw] : [];
+           const isClaimed = claimsArr.some((c: any) => ['paid', 'minted'].includes(c.claim_status));
+           const isWithin24h = Date.now() <= new Date(auction.ends_at).getTime() + 24 * 60 * 60 * 1000;
+           return !isClaimed && isWithin24h;
+        })
+        .map(auction => ({
+           id: auction.id,
+           title: auction.title,
+           image: auction.image_url,
+           wonPrice: Number(auction.current_price),
+           xpReward: 100,
+           mintedDate: new Date().toISOString(),
+           txHash: '0x',
+           endsAt: auction.ends_at
+        }));
 
       // Update state
       set({
@@ -507,11 +536,14 @@ export const useAppStore = create<AppState>((set, get) => ({
           image: c.image,
           wonPrice: Number(c.wonPrice),
           xpReward: c.xpReward,
+          prizeDetails: c.prizeDetails,
           mintedDate: c.mintedDate,
-          txHash: c.txHash
+          txHash: c.txHash,
+          tokenId: c.nft_token_id
         })),
         profileActiveBids: activeBids,
-        profileActivityLogs: activityLogs
+        profileActivityLogs: activityLogs,
+        wonAuctions: wonAuctionsList
       });
     } catch (error) {
       console.error('Error fetching profile data:', error);

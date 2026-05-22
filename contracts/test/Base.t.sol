@@ -40,7 +40,7 @@ abstract contract BaseTest is Test {
         vm.startPrank(owner);
         usd = new MockUSD();
         badge = new AchievementBadge(owner);
-        settlement = new AuctionSettlement(owner, trustedForwarder, usd, badge, signer, FEE_BPS);
+        settlement = new AuctionSettlement(owner, badge, signer, owner, FEE_BPS);
         badge.setMinter(address(settlement));
         settlement.configureAuction(AUCTION_ID, seller, endTime);
         vm.stopPrank();
