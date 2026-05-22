@@ -88,7 +88,8 @@ async function main() {
     badgeAddress,             // AchievementBadge address
     backendSignerAddress,     // Backend Signer
     finalTreasury,            // Treasury Address
-    feeBps                    // Platform fee
+    feeBps,                   // Platform fee
+    mockUsdAddress            // Payment token (TYI_MOCK_USD)
   );
   await settlementContract.waitForDeployment();
   const settlementAddress = await settlementContract.getAddress();

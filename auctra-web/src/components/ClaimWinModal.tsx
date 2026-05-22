@@ -8,7 +8,6 @@ import { ethers } from 'ethers';
 import { executeUgfTransaction, mapUgfError } from '@/lib/ugfPayment';
 import { formatUsdAmount } from '@/lib/currency';
 
-// ABI for the Settlement Contract's claim function
 const AUCTION_SETTLEMENT_ABI = [
   {
     type: 'function',
@@ -16,18 +15,28 @@ const AUCTION_SETTLEMENT_ABI = [
     inputs: [
       { name: 'auctionId', type: 'uint256' },
       { name: 'finalPrice', type: 'uint256' },
-      { name: 'signature', type: 'bytes' }
+      { name: 'signature', type: 'bytes' },
     ],
-    outputs: []
-  }
+    outputs: [],
+  },
 ];
 
-const ERC20_TRANSFER_ABI = [
+const ERC20_ABI = [
   {
     type: 'function',
-    name: 'transfer',
+    name: 'allowance',
+    stateMutability: 'view',
     inputs: [
-      { name: 'to', type: 'address' },
+      { name: 'owner', type: 'address' },
+      { name: 'spender', type: 'address' },
+    ],
+    outputs: [{ name: '', type: 'uint256' }],
+  },
+  {
+    type: 'function',
+    name: 'approve',
+    inputs: [
+      { name: 'spender', type: 'address' },
       { name: 'amount', type: 'uint256' },
     ],
     outputs: [{ name: 'success', type: 'bool' }],
@@ -47,14 +56,10 @@ interface ClaimWinModalProps {
   onSuccess: () => void;
 }
 
-interface ClaimPaymentTransfer {
-  kind: 'seller' | 'platform_fee';
-  to: `0x${string}`;
-  amountUnits: string;
-}
+type Step = 'idle' | 'checking' | 'approving' | 'signing' | 'executing' | 'confirming' | 'success';
 
 export default function ClaimWinModal({ isOpen, onClose, auction, walletAddress, onSuccess }: ClaimWinModalProps) {
-  const [step, setStep] = useState<'idle' | 'signing' | 'ugf-payment' | 'ugf-executing' | 'confirming' | 'success'>('idle');
+  const [step, setStep] = useState<Step>('idle');
   const [error, setError] = useState('');
   const { wallets } = useWallets();
 
@@ -62,146 +67,103 @@ export default function ClaimWinModal({ isOpen, onClose, auction, walletAddress,
 
   const handleClaim = async () => {
     try {
-      setStep('signing');
+      setStep('checking');
       setError('');
 
-      // 1. Ask the backend for UGF payment instructions.
-      const paymentRes = await fetch('/api/buyer/claim-payment', {
+      const activeWallet =
+        wallets.find((w) => w.address.toLowerCase() === walletAddress.toLowerCase()) || wallets[0];
+      if (!activeWallet) throw new Error('No connected wallet found.');
+
+      if (activeWallet.chainId !== 'eip155:84532') {
+        await activeWallet.switchChain(84532);
+      }
+
+      const ethereumProvider = await activeWallet.getEthereumProvider();
+      const provider = new ethers.BrowserProvider(ethereumProvider);
+      const signer = await provider.getSigner();
+      const signerAddress = await signer.getAddress();
+
+      const ugf = new UGFClient();
+      try {
+        await ugf.auth.login(signer);
+      } catch (err: unknown) {
+        throw new Error(mapUgfError('login', err));
+      }
+
+      // 1. Get backend signature + payment details
+      setStep('signing');
+      const sigRes = await fetch('/api/buyer/claim-signature', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          auctionId: auction.id,
-          walletAddress,
-        })
+        body: JSON.stringify({ auctionId: auction.id, walletAddress }),
       });
-      const paymentData = await paymentRes.json();
-      if (!paymentRes.ok) throw new Error(paymentData.error || 'Failed to initialize UGF payment');
+      const sigData = await sigRes.json();
+      if (!sigRes.ok) throw new Error(sigData.error || 'Failed to get claim signature');
 
-      let txHash = '';
-      let claimDigest = '';
-      try {
-        const activeWallet = wallets.find(w => w.address.toLowerCase() === walletAddress.toLowerCase()) || wallets[0];
-        if (!activeWallet) throw new Error("No connected wallet found.");
-        
-        // Ensure the wallet is connected to Base Sepolia (Chain ID: 84532)
-        if (activeWallet.chainId !== 'eip155:84532') {
-          await activeWallet.switchChain(84532);
-        }
-        
-        // Setup Ethers provider from Privy wallet
-        const ethereumProvider = await activeWallet.getEthereumProvider();
-        const provider = new ethers.BrowserProvider(ethereumProvider);
-        const signer = await provider.getSigner();
+      const { signature, auctionIdInt, finalPriceWei, paymentTokenAddress, contractAddress } = sigData;
 
-        const signerAddress = await signer.getAddress();
-        const ugf = new UGFClient();
-        
-        // Authenticate UGF Session
-        try {
-          await ugf.auth.login(signer);
-        } catch (err: unknown) {
-          throw new Error(mapUgfError('login', err));
-        }
+      // 2. Check allowance — if insufficient, approve max in a single UGF tx
+      const tokenContract = new ethers.Contract(paymentTokenAddress, ERC20_ABI, provider);
+      const currentAllowance: bigint = await tokenContract.allowance(signerAddress, contractAddress);
 
-        setStep('ugf-payment');
-
-        const paymentTxHashes: Record<string, string> = {};
-        const ugfPaymentDigests: Record<string, string> = {};
-
-        for (const transfer of paymentData.transfers as ClaimPaymentTransfer[]) {
-          const transferCallData = encodeFunctionData({
-            abi: ERC20_TRANSFER_ABI,
-            functionName: 'transfer',
-            args: [transfer.to as `0x${string}`, BigInt(transfer.amountUnits)]
-          });
-
-          const result = await executeUgfTransaction({
-            ugf,
-            signer,
-            payerAddress: signerAddress,
-            token: paymentData.paymentCoin,
-            tx: {
-              to: paymentData.paymentTokenAddress,
-              data: transferCallData,
-              value: BigInt(0),
-            },
-          });
-
-          paymentTxHashes[transfer.kind] = result.userTxHash;
-          ugfPaymentDigests[transfer.kind] = result.digest;
-        }
-
-        const sigRes = await fetch('/api/buyer/claim-signature', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            auctionId: auction.id,
-            walletAddress,
-            paymentTxHashes,
-            ugfPaymentDigests,
-          })
+      if (currentAllowance < BigInt(finalPriceWei)) {
+        setStep('approving');
+        const approveData = encodeFunctionData({
+          abi: ERC20_ABI,
+          functionName: 'approve',
+          args: [contractAddress as `0x${string}`, ethers.MaxUint256],
         });
-        const sigData = await sigRes.json();
-        if (!sigRes.ok) throw new Error(sigData.error || 'Failed to verify UGF payment');
-
-        setStep('ugf-executing');
-
-        const callData = encodeFunctionData({
-          abi: AUCTION_SETTLEMENT_ABI,
-          functionName: 'claim',
-          args: [
-            BigInt(sigData.auctionIdInt),
-            BigInt(sigData.finalPriceWei),
-            sigData.signature as `0x${string}`
-          ]
-        });
-
-        const claimResult = await executeUgfTransaction({
+        await executeUgfTransaction({
           ugf,
           signer,
           payerAddress: signerAddress,
-          token: paymentData.paymentCoin,
-          tx: {
-            to: sigData.contractAddress,
-            data: callData,
-            value: BigInt(0),
-          },
+          tx: { to: paymentTokenAddress, data: approveData, value: BigInt(0) },
         });
-
-        txHash = claimResult.userTxHash;
-        claimDigest = claimResult.digest;
-      } catch (err: unknown) {
-        throw new Error(err instanceof Error ? err.message : 'UGF Execution failed');
       }
 
-      setStep('confirming');
+      // 3. Single claim transaction — pays seller + treasury + mints badge atomically
+      setStep('executing');
+      const claimData = encodeFunctionData({
+        abi: AUCTION_SETTLEMENT_ABI,
+        functionName: 'claim',
+        args: [BigInt(auctionIdInt), BigInt(finalPriceWei), signature as `0x${string}`],
+      });
 
-      // 4. Confirm Claim in Database
+      const claimResult = await executeUgfTransaction({
+        ugf,
+        signer,
+        payerAddress: signerAddress,
+        tx: { to: contractAddress, data: claimData, value: BigInt(0) },
+      });
+
+      // 4. Confirm in DB
+      setStep('confirming');
       const confirmRes = await fetch('/api/buyer/confirm-claim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           auctionId: auction.id,
-          txHash,
+          txHash: claimResult.userTxHash,
           amountPaid: auction.wonPrice,
-          ugfClaimDigest: claimDigest
-        })
+          ugfClaimDigest: claimResult.digest,
+        }),
       });
 
-      if (!confirmRes.ok) throw new Error('Backend confirmation failed after UGF execution');
+      if (!confirmRes.ok) throw new Error('Backend confirmation failed after claim execution');
 
       setStep('success');
       setTimeout(() => {
         onSuccess();
         onClose();
       }, 3000);
-
     } catch (err: unknown) {
       console.error(err);
       setError(err instanceof Error ? err.message : 'An error occurred during the claim process.');
       setStep('idle');
     }
   };
+
+  const isActive = step !== 'idle' && step !== 'success';
 
   return (
     <AnimatePresence>
@@ -220,7 +182,7 @@ export default function ClaimWinModal({ isOpen, onClose, auction, walletAddress,
             </h2>
             <button
               onClick={onClose}
-              disabled={step !== 'idle' && step !== 'success'}
+              disabled={isActive}
               className="rounded-full p-2 text-slate-400 hover:bg-white/5 hover:text-white disabled:opacity-50 transition-colors"
             >
               <X className="h-5 w-5" />
@@ -233,7 +195,10 @@ export default function ClaimWinModal({ isOpen, onClose, auction, walletAddress,
               <img src={auction.image} alt={auction.title} className="h-16 w-16 rounded-xl object-cover" />
               <div>
                 <div className="font-bold text-white text-base">{auction.title}</div>
-                <div className="text-xs text-slate-400 mt-1">Winning Bid: <span className="text-indigo-400 font-bold">{formatUsdAmount(auction.wonPrice)} Mock USD</span></div>
+                <div className="text-xs text-slate-400 mt-1">
+                  Winning Bid:{' '}
+                  <span className="text-indigo-400 font-bold">{formatUsdAmount(auction.wonPrice)} Mock USD</span>
+                </div>
               </div>
             </div>
 
@@ -244,7 +209,9 @@ export default function ClaimWinModal({ isOpen, onClose, auction, walletAddress,
               </div>
               <div>
                 <div className="text-sm font-bold text-indigo-300">Secret Achievement Unlocked</div>
-                <div className="text-xs text-slate-400 mt-1">Claiming this item will automatically mint a soulbound Collector&apos;s Badge NFT to your wallet!</div>
+                <div className="text-xs text-slate-400 mt-1">
+                  Claiming this item will automatically mint a soulbound Collector&apos;s Badge NFT to your wallet!
+                </div>
               </div>
             </div>
 
@@ -281,11 +248,36 @@ export default function ClaimWinModal({ isOpen, onClose, auction, walletAddress,
               className="w-full relative overflow-hidden rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-4 text-sm font-black text-white hover:from-indigo-500 hover:to-violet-500 transition-all disabled:opacity-70 disabled:cursor-not-allowed group"
             >
               {step === 'idle' && 'Claim & Mint Badge'}
-              {step === 'signing' && <span className="flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Verifying Win...</span>}
-              {step === 'ugf-payment' && <span className="flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> UGF Processing Payment...</span>}
-              {step === 'ugf-executing' && <span className="flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Minting Badge Gaslessly...</span>}
-              {step === 'confirming' && <span className="flex items-center justify-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Finalizing Ownership...</span>}
-              {step === 'success' && <span className="flex items-center justify-center gap-2"><CheckCircle2 className="h-5 w-5 text-green-400" /> Success!</span>}
+              {step === 'checking' && (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Checking Payment Status...
+                </span>
+              )}
+              {step === 'signing' && (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Verifying Win...
+                </span>
+              )}
+              {step === 'approving' && (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Authorize Payment (one-time)...
+                </span>
+              )}
+              {step === 'executing' && (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Paying & Minting Badge...
+                </span>
+              )}
+              {step === 'confirming' && (
+                <span className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Finalizing Ownership...
+                </span>
+              )}
+              {step === 'success' && (
+                <span className="flex items-center justify-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-green-400" /> Success!
+                </span>
+              )}
             </button>
           </div>
         </motion.div>

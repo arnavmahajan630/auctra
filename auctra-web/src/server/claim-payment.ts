@@ -1,7 +1,7 @@
 import { supabase } from '@/server/supabase';
 import { PrivyClient } from '@privy-io/server-auth';
 import { ethers } from 'ethers';
-import { createPublicClient, getAddress, http, parseEventLogs } from 'viem';
+import { createPublicClient, getAddress, http } from 'viem';
 import { baseSepolia } from 'viem/chains';
 
 export const CHAIN_ID = 84532;
@@ -18,18 +18,6 @@ export const WINNER_TAG = ethers.keccak256(ethers.toUtf8Bytes('AUCTRA_WINNER_V1'
 type WalletAddress = `0x${string}`;
 
 const privy = new PrivyClient(process.env.NEXT_PUBLIC_PRIVY_APP_ID || '', process.env.PRIVY_APP_SECRET || '');
-
-const transferEventAbi = [
-  {
-    type: 'event',
-    name: 'Transfer',
-    inputs: [
-      { name: 'from', type: 'address', indexed: true },
-      { name: 'to', type: 'address', indexed: true },
-      { name: 'value', type: 'uint256', indexed: false },
-    ],
-  },
-] as const;
 
 const settlementAuctionAbi = [
   {
@@ -305,44 +293,6 @@ async function lazyConfigureAuction(auctionIdInt: bigint, sellerWallet: string, 
     console.error('lazyConfigureAuction failed:', err);
     throw new ClaimFlowError('Failed to configure auction on-chain', 500);
   }
-}
-
-export async function verifyTokenTransferTx(params: {
-  txHash: `0x${string}`;
-  from: `0x${string}`;
-  to: `0x${string}`;
-  amount: bigint;
-}) {
-  if (params.amount === BigInt(0)) return true;
-
-  const publicClient = createPublicClient({
-    chain: baseSepolia,
-    transport: http(),
-  });
-  const receipt = await publicClient.getTransactionReceipt({ hash: params.txHash });
-  if (receipt.status !== 'success') {
-    throw new ClaimFlowError('UGF payment transaction reverted on-chain', 402);
-  }
-
-  const logs = parseEventLogs({
-    abi: transferEventAbi,
-    eventName: 'Transfer',
-    logs: receipt.logs.filter((log) => log.address.toLowerCase() === PAYMENT_TOKEN_ADDRESS.toLowerCase()),
-  });
-
-  const found = logs.some((log) => {
-    return (
-      log.args.from.toLowerCase() === params.from.toLowerCase() &&
-      log.args.to.toLowerCase() === params.to.toLowerCase() &&
-      log.args.value >= params.amount
-    );
-  });
-
-  if (!found) {
-    throw new ClaimFlowError('UGF payment receipt does not match the required auction payout', 402);
-  }
-
-  return true;
 }
 
 export class ClaimFlowError extends Error {
