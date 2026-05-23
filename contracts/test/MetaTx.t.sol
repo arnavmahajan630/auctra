@@ -13,9 +13,10 @@ contract MetaTxTest is BaseTest {
         vm.prank(winner);
         settlement.claim(AUCTION_ID, PRICE, sig);
 
+        uint256 feeAmt = (PRICE * FEE_BPS) / 10_000;
         assertEq(badge.ownerOf(1), winner);
-        assertEq(usd.balanceOf(seller), 0);
-        assertEq(usd.balanceOf(settlement.treasury()), 0);
+        assertEq(usd.balanceOf(seller), PRICE - feeAmt);
+        assertEq(usd.balanceOf(settlement.treasury()), feeAmt);
     }
 
     function test_NonForwarderRelayDoesNotSpoofSender() public {
