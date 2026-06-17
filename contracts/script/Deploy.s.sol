@@ -16,6 +16,8 @@ contract DeployScript is Script {
         // 1. Deploy AchievementBadge
         AchievementBadge badge = new AchievementBadge(vm.addr(deployerPrivateKey));
 
+        address paymentToken = vm.envAddress("PAYMENT_TOKEN");
+
         // 2. Deploy AuctionSettlement
         // Fee set to 200 bps (2%)
         AuctionSettlement settlement = new AuctionSettlement(
@@ -23,7 +25,8 @@ contract DeployScript is Script {
             badge,
             backendSigner,
             vm.addr(deployerPrivateKey), // treasury
-            200 // 2% platform fee
+            200, // 2% platform fee
+            paymentToken
         );
 
         // 3. Authorize the settlement contract to mint soulbound badges upon successful claims

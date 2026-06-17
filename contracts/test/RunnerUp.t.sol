@@ -11,11 +11,14 @@ contract RunnerUpTest is BaseTest {
 
         bytes memory sig = _sign(signerPk, settlement.RUNNER_UP_TAG(), AUCTION_ID, runnerUp, RUNNER_PRICE);
 
+        uint256 feeAmt = (RUNNER_PRICE * FEE_BPS) / 10_000;
+        uint256 sellerAmt = RUNNER_PRICE - feeAmt;
+
         vm.prank(runnerUp);
         settlement.claimAsRunnerUp(AUCTION_ID, RUNNER_PRICE, sig);
 
-        assertEq(usd.balanceOf(seller), 0, "seller payment happens through UGF before mint");
-        assertEq(usd.balanceOf(settlement.treasury()), 0, "treasury payment happens through UGF before mint");
+        assertEq(usd.balanceOf(seller), sellerAmt, "seller receives payment minus fee");
+        assertEq(usd.balanceOf(settlement.treasury()), feeAmt, "treasury receives platform fee");
         assertEq(badge.ownerOf(1), runnerUp);
     }
 
